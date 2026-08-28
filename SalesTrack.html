@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>SalesTrack — Dashboard de Vendas</title>
+    <script>
+        document.documentElement.dataset.theme = localStorage.getItem('salestrack-theme') || 'dark';
+    </script>
     <link rel="icon" type="image/png" href="assets/branding/melo-fullbody.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=19">
+    <link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
 
@@ -19,7 +22,7 @@
         <header class="header">
             <div class="header-left">
                 <div class="header-logo">
-                    <img class="dashboard-icon" src="assets/branding/melo-fullbody.png" alt="Melo, mascote da Fazenda Eldorado">
+                    <img id="dashboardMascot" class="dashboard-icon" src="assets/branding/melo-dark.png" data-dark-src="assets/branding/melo-dark.png" data-light-src="assets/branding/melo-fullbody.png" alt="Melo, mascote da Fazenda Eldorado">
                     <span class="header-brand">SalesTrack</span>
                 </div>
                 <div class="header-file-info">
@@ -33,6 +36,10 @@
                 <img class="banner-logo" src="assets/branding/fazenda-eldorado-logo.png" alt="">
             </div>
             <div class="header-right">
+                <button id="themeToggle" class="theme-toggle" type="button" aria-label="Ativar tema claro" aria-pressed="false">
+                    <span class="theme-icon" aria-hidden="true">☾</span>
+                    <span class="theme-label">Escuro</span>
+                </button>
                 <div id="dateFilterContainer" class="period-filter hidden">
                     <button id="previousMonthBtn" class="period-arrow" type="button" aria-label="Mês anterior">‹</button>
                     <button id="periodDropdownToggle" class="period-selector" type="button" aria-expanded="false">
@@ -179,9 +186,10 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="js/theme.js?v=1"></script>
     <script src="js/parser.js?v=19"></script>
-    <script src="js/charts.js?v=14"></script>
+    <script src="js/charts.js?v=15"></script>
     <script src="js/ui.js?v=19"></script>
-    <script src="js/app.js?v=18"></script>
+    <script src="js/app.js?v=19"></script>
 </body>
 </html>

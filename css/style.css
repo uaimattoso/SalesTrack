@@ -28,6 +28,24 @@
   --dashboard-panel-columns: minmax(0, 1.45fr) minmax(0, 1fr);
 }
 
+:root[data-theme="light"] {
+  --bg-base:       #f3f5f8;
+  --bg-card:       #ffffff;
+  --bg-card-hover: #f7f9fc;
+  --border:        #d8dee8;
+  --accent-dim:    rgba(176,128,0,0.11);
+  --text-primary:  #172033;
+  --text-muted:    #667085;
+  --text-dim:      #98a2b3;
+  --danger-dim:    rgba(224,49,84,0.10);
+  --success:       #008f63;
+  --success-dim:   rgba(0,143,99,0.10);
+  --blue:          #2869c7;
+  --purple:        #7c5ce0;
+  --teal:          #0b8f83;
+  --shadow:        0 4px 20px rgba(26,39,64,0.10);
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background: var(--bg-base);
@@ -35,6 +53,7 @@ body {
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ─── UTILITIES ─────────────────────────────── */
@@ -153,12 +172,13 @@ body {
   height: 56px;
   padding: 2px;
   object-fit: contain;
-  background: #fff;
+  background: var(--bg-card);
   box-sizing: border-box;
   border-radius: 14px;
   border: 1px solid rgba(245,231,197,0.28);
   flex: 0 0 auto;
   filter: drop-shadow(0 3px 8px rgba(0,0,0,0.32));
+  transition: background-color 0.3s ease, opacity 0.2s ease;
 }
 
 .header-brand {
@@ -240,6 +260,62 @@ body {
 .file-rows { font-size: 11px; color: var(--text-muted); }
 
 .header-right { display: flex; align-items: center; gap: 12px; }
+
+.theme-toggle {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.theme-icon {
+  width: 18px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+:root[data-theme="light"] .company-title-banner {
+  background: linear-gradient(90deg, rgba(255,255,255,0.94), rgba(222,240,231,0.92), rgba(255,255,255,0.94));
+  box-shadow: inset 0 0 20px rgba(24,88,66,0.08);
+}
+
+:root[data-theme="light"] .company-title-banner::before { opacity: 0.10; }
+:root[data-theme="light"] .company-title {
+  color: #174f3d;
+  text-shadow: none;
+}
+:root[data-theme="light"] .company-title strong { color: #9a6b00; }
+:root[data-theme="light"] .banner-logo { filter: drop-shadow(0 2px 5px rgba(23,79,61,0.18)); }
+
+:root[data-theme="light"] .toggle-wrap { background: rgba(23,32,51,0.035); }
+
+.header,
+.kpi-card,
+.chart-card,
+.ranking-card,
+.summary-card,
+.period-filter,
+.period-dropdown,
+.footer {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
 
 /* ERP-style period filter */
 .period-filter {
@@ -851,6 +927,8 @@ body {
   .header-brand, .header-file-info { display: none; }
   .header-left { gap: 8px; }
   .header-right { min-width: 0; }
+  .theme-toggle { width: 38px; padding: 0; }
+  .theme-label { display: none; }
   .period-filter { min-width: 0; width: 205px; }
   .period-arrow { width: 28px; }
   .period-selector { padding: 0 6px; font-size: 11px; }

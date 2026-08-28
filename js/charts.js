@@ -13,14 +13,28 @@ const Charts = (() => {
   let pieChartInstance   = null;
   let comparisonChartInstance = null;
 
-  const tooltipDefaults = {
-    backgroundColor: '#1a1d27',
-    borderColor: '#2a2d3e',
+  function themeColors() {
+    const styles = getComputedStyle(document.documentElement);
+    const read = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+    return {
+      card: read('--bg-card', '#1a1d27'),
+      border: read('--border', '#2a2d3e'),
+      primary: read('--text-primary', '#e8eaf0'),
+      muted: read('--text-muted', '#8b8fa8'),
+    };
+  }
+
+  function tooltipDefaults() {
+    const theme = themeColors();
+    return {
+    backgroundColor: theme.card,
+    borderColor: theme.border,
     borderWidth: 1,
-    titleColor: '#e8eaf0',
-    bodyColor: '#8b8fa8',
+    titleColor: theme.primary,
+    bodyColor: theme.muted,
     padding: 12,
-  };
+    };
+  }
 
   function fmtBRL(val) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
@@ -52,6 +66,7 @@ const Charts = (() => {
     const accumulated = values.map(v => { acc += v; return acc; });
 
     const ctx = document.getElementById('barChart').getContext('2d');
+    const theme = themeColors();
 
     // Gradiente de preenchimento da area
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -78,7 +93,7 @@ const Charts = (() => {
             pointRadius: dailyAgg.length <= 15 ? 5 : 3,
             pointHoverRadius: 7,
             pointBackgroundColor: '#fcb900',
-            pointBorderColor: '#1a1d27',
+            pointBorderColor: theme.card,
             pointBorderWidth: 2,
             fill: true,
             tension: 0.35,
@@ -107,14 +122,14 @@ const Charts = (() => {
         plugins: {
           legend: {
             labels: {
-              color: '#8b8fa8',
+              color: theme.muted,
               font: { family: 'Inter', size: 12 },
               boxWidth: 12,
               padding: 16,
             },
           },
           tooltip: {
-            ...tooltipDefaults,
+            ...tooltipDefaults(),
             callbacks: {
               label: ctx => ` ${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
             }
@@ -122,9 +137,9 @@ const Charts = (() => {
         },
         scales: {
           x: {
-            grid: { color: '#2a2d3e', drawBorder: false },
+            grid: { color: theme.border, drawBorder: false },
             ticks: {
-              color: '#8b8fa8',
+              color: theme.muted,
               font: { family: 'Inter', size: 11 },
               maxTicksLimit: 16,
               maxRotation: 45,
@@ -132,7 +147,7 @@ const Charts = (() => {
           },
           y: {
             position: 'left',
-            grid: { color: '#2a2d3e', drawBorder: false },
+            grid: { color: theme.border, drawBorder: false },
             ticks: {
               color: '#fcb900',
               font: { family: 'Inter', size: 11 },
@@ -178,6 +193,7 @@ const Charts = (() => {
     const colors = ranking.map((_, i) => COLORS[i % COLORS.length]);
 
     const ctx = document.getElementById('pieChart').getContext('2d');
+    const theme = themeColors();
 
     pieChartInstance = new Chart(ctx, {
       type: 'doughnut',
@@ -186,7 +202,7 @@ const Charts = (() => {
         datasets: [{
           data: values,
           backgroundColor: colors.map(c => c + 'cc'),
-          borderColor: '#1a1d27',
+          borderColor: theme.card,
           borderWidth: 3,
           hoverOffset: 6,
         }]
@@ -199,7 +215,7 @@ const Charts = (() => {
           legend: {
             position: 'bottom',
             labels: {
-              color: '#8b8fa8',
+              color: theme.muted,
               font: { family: 'Inter', size: 12 },
               boxWidth: 12,
               padding: 14,
@@ -221,7 +237,7 @@ const Charts = (() => {
                     text: detailedLabel,
                     fillStyle: style.backgroundColor,
                     strokeStyle: style.borderColor,
-                    fontColor: '#8b8fa8',
+                    fontColor: theme.muted,
                     lineWidth: style.borderWidth,
                     hidden: !chart.getDataVisibility(index),
                     index,
@@ -231,7 +247,7 @@ const Charts = (() => {
             },
           },
           tooltip: {
-            ...tooltipDefaults,
+            ...tooltipDefaults(),
             callbacks: {
               label: function(ctx) {
                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
@@ -263,6 +279,7 @@ const Charts = (() => {
     const currentValues = [...currentSeries.values, ...Array(Math.max(0, length - currentSeries.values.length)).fill(null)];
     const previousValues = [...previousSeries.values, ...Array(Math.max(0, length - previousSeries.values.length)).fill(null)];
     const ctx = document.getElementById('comparisonChart').getContext('2d');
+    const theme = themeColors();
 
     comparisonChartInstance = new Chart(ctx, {
       type: 'bar',
@@ -298,10 +315,10 @@ const Charts = (() => {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: {
-            labels: { color: '#8b8fa8', font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 14 },
+            labels: { color: theme.muted, font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 14 },
           },
           tooltip: {
-            ...tooltipDefaults,
+            ...tooltipDefaults(),
             callbacks: {
               title: items => {
                 const index = items[0]?.dataIndex || 0;
@@ -315,14 +332,14 @@ const Charts = (() => {
         },
         scales: {
           x: {
-            grid: { color: '#2a2d3e', drawBorder: false },
-            ticks: { color: '#8b8fa8', font: { family: 'Inter', size: 10 }, maxTicksLimit: 10 },
+            grid: { color: theme.border, drawBorder: false },
+            ticks: { color: theme.muted, font: { family: 'Inter', size: 10 }, maxTicksLimit: 10 },
           },
           y: {
             beginAtZero: true,
-            grid: { color: '#2a2d3e', drawBorder: false },
+            grid: { color: theme.border, drawBorder: false },
             ticks: {
-              color: '#8b8fa8',
+              color: theme.muted,
               font: { family: 'Inter', size: 10 },
               callback: value => 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value),
             },

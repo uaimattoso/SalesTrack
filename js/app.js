@@ -411,6 +411,10 @@
     fetchData();
   });
 
+  window.addEventListener('salestrack:themechange', () => {
+    if (parsedData && currentFrom && currentTo) renderDashboard(currentFrom, currentTo);
+  });
+
   // ─── EVENTOS DA UI ────────────────────────────────────────────
 
   document.getElementById('pieSwitch').addEventListener('change', function() {
