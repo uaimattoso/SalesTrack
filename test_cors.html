@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html>
+<body>
+  <div id="out"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="js/parser.js"></script>
+  <script>
+    const LINK = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv';
+    async function run() {
+      try {
+        const resposta = await fetch(LINK);
+        const arrayBuffer = await resposta.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+        const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
+        
+        try {
+          Parser.process(rawData, 'Google Drive');
+          document.getElementById('out').innerText = 'SUCCESS';
+        } catch(e) {
+          document.getElementById('out').innerText = 'PARSER ERROR: ' + e.message;
+        }
+        
+      } catch (e) {
+        document.getElementById('out').innerText = 'FETCH ERROR: ' + e.message;
+      }
+    }
+    run();
+  </script>
+</body>
+</html>

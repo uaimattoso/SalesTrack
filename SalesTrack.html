@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>SalesTrack — Dashboard de Vendas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+
+    <!-- TELA DO DASHBOARD -->
+    <div id="dashboard-screen" class="dashboard-screen">
+
+        <header class="header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+                        <rect width="48" height="48" rx="12" fill="#fcb900"/>
+                        <path d="M14 34L24 14L34 34" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 28H31" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <span class="header-brand">SalesTrack</span>
+                </div>
+                <div class="header-file-info">
+                    <span id="statusConsulta" class="status-box carregando" style="font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 4px; background: rgba(252,185,0,0.1); color: #fcb900; border: 1px solid rgba(252,185,0,0.2);">Sincronizando com o Google Drive...</span>
+                    <span id="totalRows" class="file-rows" style="margin-top: 2px;">0 registros</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="dateFilterContainer" class="period-filter hidden">
+                    <button id="previousMonthBtn" class="period-arrow" type="button" aria-label="Mês anterior">‹</button>
+                    <button id="periodDropdownToggle" class="period-selector" type="button" aria-expanded="false">
+                        <span id="periodSelectorLabel">Este mês</span>
+                        <span class="period-chevron">⌄</span>
+                    </button>
+                    <button id="nextMonthBtn" class="period-arrow" type="button" aria-label="Próximo mês">›</button>
+                    <div id="periodDropdown" class="period-dropdown hidden">
+                        <button class="period-option" type="button" data-period="today">Hoje</button>
+                        <button class="period-option" type="button" data-period="week">Esta semana</button>
+                        <button class="period-option" type="button" data-period="month">Este mês</button>
+                        <button class="period-option" type="button" data-period="year">Este ano</button>
+                        <button class="period-option" type="button" data-period="last30">Últimos 30 dias</button>
+                        <button class="period-option" type="button" data-period="last12months">Últimos 12 meses</button>
+                        <button class="period-option" type="button" data-period="all">Todo o período</button>
+                        <button class="period-option" type="button" data-period="custom">Período personalizado</button>
+                        <div id="customDatePanel" class="custom-date-panel hidden">
+                            <label>De <input type="date" id="dateFrom" class="date-input"></label>
+                            <label>Até <input type="date" id="dateTo" class="date-input"></label>
+                            <div class="custom-date-actions">
+                                <button id="cancelCustomFilter" class="btn-clear" type="button">Cancelar</button>
+                                <button id="applyFilter" class="btn-filter" type="button">Aplicar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="newFileBtn" class="btn-new-file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Atualizar Dados
+                </button>
+            </div>
+        </header>
+
+        <main class="main">
+            <section class="kpi-grid">
+                <div class="kpi-card kpi-primary kpi-clickable" id="salesModeCard" role="button" tabindex="0" title="Mostrar vendas válidas">
+                    <div class="kpi-label" id="kpi-total-label">Vendas do Período (0)</div>
+                    <div class="kpi-value" id="kpi-total-bruto">R$ 0,00</div>
+                    <div class="kpi-sub" id="kpi-total-sub">Período selecionado</div>
+                    <div class="kpi-variation" id="kpi-sales-variation"></div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label" id="kpi-toneladas-label">Venda Total em Toneladas</div>
+                    <div class="kpi-value" id="kpi-toneladas">0,00 t</div>
+                    <div class="kpi-variation" id="kpi-toneladas-comparison">Comparando período anterior</div>
+                </div>
+                <div class="kpi-card kpi-trays">
+                    <div class="kpi-label" id="kpi-bandejas-label">Bandejas Vendidas</div>
+                    <div class="kpi-value" id="kpi-bandejas">0</div>
+                    <div class="kpi-sub">Conversão padrão em bandejas</div>
+                    <div class="kpi-variation" id="kpi-bandejas-variation"></div>
+                </div>
+                <div class="kpi-card kpi-weight">
+                    <div class="kpi-label" id="kpi-kg-label">Kg de Shiitake Vendidos</div>
+                    <div class="kpi-value" id="kpi-kg">0,00 kg</div>
+                    <div class="kpi-sub" id="kpi-kg-composition">Inteiro: 0,00 kg · Fatiado: 0,00 kg</div>
+                    <div class="kpi-variation" id="kpi-kg-variation"></div>
+                </div>
+                <div class="kpi-card kpi-danger kpi-clickable" id="cancellationModeCard" role="button" tabindex="0" title="Alternar visão de cancelamentos">
+                    <div class="kpi-label" id="kpi-cancel-label">Cancelamentos (0)</div>
+                    <div class="kpi-value" id="kpi-cancelamentos">R$ 0,00</div>
+                    <div class="kpi-sub" id="kpi-cancel-pct">0% do total</div>
+                    <div class="kpi-variation" id="kpi-cancel-variation"></div>
+                </div>
+                <div class="kpi-card kpi-gold">
+                    <div class="kpi-label" id="kpi-top-label">Melhor Vendedor</div>
+                    <div class="kpi-value kpi-name" id="kpi-top-name">-</div>
+                    <div class="kpi-sub" id="kpi-top-value">R$ 0,00</div>
+                    <div class="kpi-sub kpi-sales-count" id="kpi-top-sales">0 vendas realizadas</div>
+                    <div class="kpi-variation" id="kpi-top-variation"></div>
+                </div>
+            </section>
+
+            <section class="charts-grid">
+                <div class="chart-card chart-bar">
+                    <div class="chart-header">
+                        <h3 id="daily-chart-title">Fluxo de Vendas Diárias</h3>
+                        <span class="chart-badge">Dia a Dia</span>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card chart-pie">
+                    <div class="chart-header pie-chart-header">
+                        <h3 id="participation-title">Participação</h3>
+                        <div class="pie-controls">
+                            <div id="pieSwitchContainer" class="toggle-wrap hidden">
+                                <span id="pieLabelCliente" class="toggle-label active">Cliente</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="pieSwitch">
+                                    <span class="slider"></span>
+                                </label>
+                                <span id="pieLabelProduto" class="toggle-label">Produto</span>
+                            </div>
+                            <div id="quantitySwitchContainer" class="toggle-wrap hidden">
+                                <span id="quantityLabelBandejas" class="toggle-label active">Bandejas</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="quantitySwitch">
+                                    <span class="slider"></span>
+                                </label>
+                                <span id="quantityLabelKg" class="toggle-label">Kg</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bottom-grid">
+                <div class="table-card comparison-card">
+                    <div class="chart-header">
+                        <h3 id="comparison-title">Comparativo de Vendas</h3>
+                        <span class="chart-badge" id="comparison-period-label">Atual × anterior</span>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <div class="chart-header">
+                        <h3 id="summary-title">Resumo do Período</h3>
+                    </div>
+                    <table class="summary-table">
+                        <tbody id="summaryBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            SalesTrack &mdash; Dashboard de Vendas &nbsp;|&nbsp; Gerado em <span id="footerDate"></span>
+        </footer>
+    </div>
+
+    <script>
+        window.SALES_TRACK_CONFIG = {
+            sheetsCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv'
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="js/parser.js?v=19"></script>
+    <script src="js/charts.js?v=12"></script>
+    <script src="js/ui.js?v=17"></script>
+    <script src="js/app.js?v=16"></script>
+</body>
+</html>

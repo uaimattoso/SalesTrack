@@ -1,0 +1,19 @@
+# Dados locais e potencialmente sensiveis
+*.csv
+
+# Backups
+BKP/
+
+# Relatorios e artefatos gerados
+*.docx
+qa_relatorio_gerencial/
+
+# Arquivos temporarios do sistema e editores
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Cache do Python
+__pycache__/
+*.py[cod]
