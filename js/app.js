@@ -251,6 +251,36 @@
     }));
   }
 
+  function buildYearlySeries(dailyAgg, fromValue, toValue) {
+    const from = parseInputDate(fromValue);
+    const to = parseInputDate(toValue);
+    const valuesByYear = new Map();
+
+    dailyAgg.forEach(item => {
+      const yearKey = item.dateKey.slice(0, 4);
+      valuesByYear.set(yearKey, (valuesByYear.get(yearKey) || 0) + item.total);
+    });
+
+    const labels = [];
+    const values = [];
+    for (let year = from.getFullYear(); year <= to.getFullYear(); year += 1) {
+      const yearKey = String(year);
+      labels.push(yearKey);
+      values.push(valuesByYear.get(yearKey) || 0);
+    }
+
+    return { labels, values };
+  }
+
+  function buildYearlyFlow(dailyAgg, fromValue, toValue) {
+    const series = buildYearlySeries(dailyAgg, fromValue, toValue);
+    return series.labels.map((label, index) => ({
+      dateKey: label,
+      label,
+      total: series.values[index],
+    }));
+  }
+
   // ─── LEITURA DE DADOS (GOOGLE SHEETS) ─────────────────────────
 
   async function fetchData() {
@@ -330,16 +360,38 @@
     UI.updateFooter();
     UI.setupDateFilter(parsedData.hasDateColumn);
 
-    const chartGranularity = activePeriodMode === 'year' ? 'month' : 'day';
-    const flowData = chartGranularity === 'month'
-      ? buildMonthlyFlow(dailyAgg, from, to)
-      : dailyAgg;
-    const currentSeries = chartGranularity === 'month'
-      ? buildMonthlySeries(dailyAgg, from, to)
-      : buildDailySeries(dailyAgg, from, to);
-    const previousSeries = chartGranularity === 'month'
-      ? buildMonthlySeries(previousDailyAgg, previousRange.from, previousRange.to)
-      : buildDailySeries(previousDailyAgg, previousRange.from, previousRange.to);
+    const chartGranularity = activePeriodMode === 'all'
+      ? 'year'
+      : (activePeriodMode === 'year' ? 'month' : 'day');
+    const flowData = chartGranularity === 'year'
+      ? buildYearlyFlow(dailyAgg, from, to)
+      : (chartGranularity === 'month' ? buildMonthlyFlow(dailyAgg, from, to) : dailyAgg);
+    const currentSeries = chartGranularity === 'year'
+      ? buildYearlySeries(dailyAgg, from, to)
+      : (chartGranularity === 'month'
+        ? buildMonthlySeries(dailyAgg, from, to)
+        : buildDailySeries(dailyAgg, from, to));
+
+    let chartPreviousLabel = previousRange.label;
+    let previousSeries;
+    if (chartGranularity === 'year') {
+      const allFrom = parseInputDate(from);
+      const allTo = parseInputDate(to);
+      const previousYearFrom = formatInputDate(new Date(allFrom.getFullYear() - 1, 0, 1));
+      const previousYearTo = formatInputDate(new Date(allTo.getFullYear() - 1, 11, 31));
+      const previousYearDailyAgg = Parser.aggregateByDay(
+        parsedData,
+        previousYearFrom,
+        previousYearTo,
+        dashboardMode
+      );
+      previousSeries = buildYearlySeries(previousYearDailyAgg, previousYearFrom, previousYearTo);
+      chartPreviousLabel = 'ano anterior';
+    } else {
+      previousSeries = chartGranularity === 'month'
+        ? buildMonthlySeries(previousDailyAgg, previousRange.from, previousRange.to)
+        : buildDailySeries(previousDailyAgg, previousRange.from, previousRange.to);
+    }
 
     UI.updateChartGranularity(chartGranularity, dashboardMode);
     Charts.renderDailyFlow(flowData, chartGranularity);
@@ -347,10 +399,10 @@
     Charts.renderPeriodComparison(
       currentSeries,
       previousSeries,
-      previousRange.label,
+      chartPreviousLabel,
       chartGranularity
     );
-    document.getElementById('comparison-period-label').textContent = `Atual × ${previousRange.label}`;
+    document.getElementById('comparison-period-label').textContent = `Atual × ${chartPreviousLabel}`;
   }
 
   // ─── INICIALIZACAO ────────────────────────────────────────────

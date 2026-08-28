@@ -116,10 +116,14 @@ const UI = (() => {
   function updateChartGranularity(granularity, dashboardMode) {
     const cancellationMode = dashboardMode === 'cancelamentos';
     const monthly = granularity === 'month';
-    document.getElementById('daily-chart-title').textContent = monthly
-      ? `Fluxo de ${cancellationMode ? 'Cancelamentos' : 'Vendas'} Mensais`
-      : `Fluxo de ${cancellationMode ? 'Cancelamentos' : 'Vendas'} Diárias`;
-    document.getElementById('flow-period-label').textContent = monthly ? 'Mês a Mês' : 'Dia a Dia';
+    const yearly = granularity === 'year';
+    const subject = cancellationMode ? 'Cancelamentos' : 'Vendas';
+    document.getElementById('daily-chart-title').textContent = yearly
+      ? `Fluxo de ${subject} Anuais`
+      : (monthly ? `Fluxo de ${subject} Mensais` : `Fluxo de ${subject} Diárias`);
+    document.getElementById('flow-period-label').textContent = yearly
+      ? 'Ano a Ano'
+      : (monthly ? 'Mês a Mês' : 'Dia a Dia');
   }
 
   function updateRanking(agg) {

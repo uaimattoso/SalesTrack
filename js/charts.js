@@ -68,7 +68,9 @@ const Charts = (() => {
         labels,
         datasets: [
           {
-            label: granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia',
+            label: granularity === 'year'
+              ? 'Vendas do Ano'
+              : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'),
             data: values,
             borderColor: '#fcb900',
             backgroundColor: gradient,
@@ -138,7 +140,9 @@ const Charts = (() => {
             },
             title: {
               display: true,
-              text: granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia',
+              text: granularity === 'year'
+                ? 'Vendas do Ano'
+                : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'),
               color: '#fcb900',
               font: { size: 11, family: 'Inter' },
             },
@@ -251,8 +255,10 @@ const Charts = (() => {
     }
 
     const length = Math.max(currentSeries.values.length, previousSeries.values.length);
-    const labels = granularity === 'month'
-      ? Array.from({ length }, (_, index) => currentSeries.labels[index] || previousSeries.labels[index] || `Mês ${index + 1}`)
+    const labels = granularity === 'month' || granularity === 'year'
+      ? Array.from({ length }, (_, index) => currentSeries.labels[index]
+        || previousSeries.labels[index]
+        || `${granularity === 'year' ? 'Ano' : 'Mês'} ${index + 1}`)
       : Array.from({ length }, (_, index) => `Dia ${index + 1}`);
     const currentValues = [...currentSeries.values, ...Array(Math.max(0, length - currentSeries.values.length)).fill(null)];
     const previousValues = [...previousSeries.values, ...Array(Math.max(0, length - previousSeries.values.length)).fill(null)];
