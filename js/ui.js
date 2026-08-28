@@ -113,6 +113,15 @@ const UI = (() => {
     }
   }
 
+  function updateChartGranularity(granularity, dashboardMode) {
+    const cancellationMode = dashboardMode === 'cancelamentos';
+    const monthly = granularity === 'month';
+    document.getElementById('daily-chart-title').textContent = monthly
+      ? `Fluxo de ${cancellationMode ? 'Cancelamentos' : 'Vendas'} Mensais`
+      : `Fluxo de ${cancellationMode ? 'Cancelamentos' : 'Vendas'} Diárias`;
+    document.getElementById('flow-period-label').textContent = monthly ? 'Mês a Mês' : 'Dia a Dia';
+  }
+
   function updateRanking(agg) {
     const body = document.getElementById('rankingBody');
     body.innerHTML = '';
@@ -316,6 +325,7 @@ const UI = (() => {
     updateSummary,
     updateFileInfo,
     updateFooter,
+    updateChartGranularity,
     updateSyncStatus,
     showDashboard,
     setupDateFilter,

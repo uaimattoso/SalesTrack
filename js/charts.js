@@ -41,7 +41,7 @@ const Charts = (() => {
    * Grafico de fluxo de vendas diarias (linha com area)
    * @param {Array} dailyAgg — array de { dateKey, label, total }
    */
-  function renderDailyFlow(dailyAgg) {
+  function renderDailyFlow(dailyAgg, granularity = 'day') {
     if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
 
     const labels = dailyAgg.map(d => d.label);
@@ -68,7 +68,7 @@ const Charts = (() => {
         labels,
         datasets: [
           {
-            label: 'Vendas do Dia',
+            label: granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia',
             data: values,
             borderColor: '#fcb900',
             backgroundColor: gradient,
@@ -138,7 +138,7 @@ const Charts = (() => {
             },
             title: {
               display: true,
-              text: 'Vendas do Dia',
+              text: granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia',
               color: '#fcb900',
               font: { size: 11, family: 'Inter' },
             },
@@ -244,14 +244,16 @@ const Charts = (() => {
     });
   }
 
-  function renderPeriodComparison(currentSeries, previousSeries, previousLabel) {
+  function renderPeriodComparison(currentSeries, previousSeries, previousLabel, granularity = 'day') {
     if (comparisonChartInstance) {
       comparisonChartInstance.destroy();
       comparisonChartInstance = null;
     }
 
     const length = Math.max(currentSeries.values.length, previousSeries.values.length);
-    const labels = Array.from({ length }, (_, index) => `Dia ${index + 1}`);
+    const labels = granularity === 'month'
+      ? Array.from({ length }, (_, index) => currentSeries.labels[index] || previousSeries.labels[index] || `Mês ${index + 1}`)
+      : Array.from({ length }, (_, index) => `Dia ${index + 1}`);
     const currentValues = [...currentSeries.values, ...Array(Math.max(0, length - currentSeries.values.length)).fill(null)];
     const previousValues = [...previousSeries.values, ...Array(Math.max(0, length - previousSeries.values.length)).fill(null)];
     const ctx = document.getElementById('comparisonChart').getContext('2d');
