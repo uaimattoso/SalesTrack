@@ -148,27 +148,14 @@ body {
   gap: 10px;
 }
 
-.company-logo {
+.dashboard-icon {
   width: 52px;
   height: 52px;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(245,231,197,0.28);
   flex: 0 0 auto;
   filter: drop-shadow(0 3px 8px rgba(0,0,0,0.32));
-}
-
-.header-brand-copy {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-
-.header-company {
-  color: #f5e7c5;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .header-brand {
@@ -178,16 +165,55 @@ body {
   letter-spacing: -0.3px;
 }
 
-.header-mascot {
-  align-self: flex-end;
-  width: 48px;
-  height: 64px;
-  object-fit: cover;
-  object-position: 50% 35%;
-  border-radius: 20px 20px 0 0;
+.company-title-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex: 1 1 auto;
+  max-width: 720px;
+  min-width: 300px;
+  height: 56px;
+  margin: 0 22px;
   border: 1px solid rgba(245,231,197,0.16);
-  border-bottom: 0;
-  box-shadow: 0 0 16px rgba(0,0,0,0.25);
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(15,17,23,0.85), rgba(12,65,48,0.58), rgba(15,17,23,0.85));
+  box-shadow: inset 0 0 26px rgba(0,0,0,0.28);
+}
+
+.company-title-banner::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -28px 25%;
+  background: url('../assets/branding/logo-mushroom.png') center 43% / 230px auto no-repeat;
+  opacity: 0.16;
+  filter: saturate(0.8);
+}
+
+.banner-logo {
+  width: 43px;
+  height: 43px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 7px rgba(0,0,0,0.42));
+}
+
+.company-title {
+  color: #f5e7c5;
+  font-size: clamp(17px, 1.35vw, 23px);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.72);
+}
+
+.company-title strong {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .header-file-info {
@@ -804,6 +830,7 @@ body {
 
 /* ─── RESPONSIVE ────────────────────────────── */
 @media (max-width: 1100px) {
+  .company-title-banner { display: none; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .charts-grid { grid-template-columns: 1fr; }
   .bottom-grid { grid-template-columns: 1fr; }
@@ -817,8 +844,8 @@ body {
   .kpi-grid { grid-template-columns: 1fr; }
   .upload-card { padding: 32px 20px; width: 95vw; }
   .header { padding: 0 14px; }
-  .company-logo { width: 42px; height: 42px; }
-  .header-brand-copy, .header-mascot, .header-file-info { display: none; }
+  .dashboard-icon { width: 42px; height: 42px; border-radius: 11px; }
+  .header-brand, .header-file-info { display: none; }
   .header-left { gap: 8px; }
   .header-right { min-width: 0; }
   .period-filter { min-width: 0; width: 205px; }
