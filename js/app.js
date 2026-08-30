@@ -342,10 +342,11 @@
     const to   = dateTo   || currentTo;
 
     const agg      = Parser.aggregate(parsedData, from, to, dashboardMode);
-    const dailyAgg = Parser.aggregateByDay(parsedData, from, to, dashboardMode);
+    const dashboardValueMode = traysDetailOpen ? quantityMode : 'currency';
+    const dailyAgg = Parser.aggregateByDay(parsedData, from, to, dashboardMode, dashboardValueMode);
     const previousRange = getPreviousRange(from, to);
     const previousAgg = Parser.aggregate(parsedData, previousRange.from, previousRange.to, dashboardMode);
-    const previousDailyAgg = Parser.aggregateByDay(parsedData, previousRange.from, previousRange.to, dashboardMode);
+    const previousDailyAgg = Parser.aggregateByDay(parsedData, previousRange.from, previousRange.to, dashboardMode, dashboardValueMode);
     const comparison = {
       label: previousRange.label,
       previousAgg,
@@ -357,7 +358,12 @@
     UI.showDashboard();
     UI.updateKPIs(agg, comparison);
     document.getElementById('traysDetailCard').classList.toggle('mode-active', traysDetailOpen);
-    UI.updateSummary(parsedData, agg, comparison);
+    document.getElementById('pieSwitchContainer').classList.toggle('hidden', traysDetailOpen || !parsedData.hasProdutoColumn);
+    if (traysDetailOpen) {
+      document.getElementById('comparison-title').textContent = `Comparativo de ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
+      document.getElementById('summary-title').textContent = `Resumo por ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
+    }
+    UI.updateSummary(parsedData, agg, comparison, dashboardValueMode);
     UI.updateFileInfo(parsedData, agg);
     UI.updateFooter();
     UI.setupDateFilter(parsedData.hasDateColumn);
@@ -385,7 +391,8 @@
         parsedData,
         previousYearFrom,
         previousYearTo,
-        dashboardMode
+        dashboardMode,
+        dashboardValueMode
       );
       previousSeries = buildYearlySeries(previousYearDailyAgg, previousYearFrom, previousYearTo);
       chartPreviousLabel = 'ano anterior';
@@ -395,14 +402,15 @@
         : buildDailySeries(previousDailyAgg, previousRange.from, previousRange.to);
     }
 
-    UI.updateChartGranularity(chartGranularity, dashboardMode);
-    Charts.renderDailyFlow(flowData, chartGranularity);
+    UI.updateChartGranularity(chartGranularity, dashboardMode, dashboardValueMode);
+    Charts.renderDailyFlow(flowData, chartGranularity, dashboardValueMode);
     Charts.renderPie(pieData, pieMode === 'produto' ? quantityMode : 'currency');
     Charts.renderPeriodComparison(
       currentSeries,
       previousSeries,
       chartPreviousLabel,
-      chartGranularity
+      chartGranularity,
+      dashboardValueMode
     );
     document.getElementById('comparison-period-label').textContent = `Atual × ${chartPreviousLabel}`;
 
@@ -438,8 +446,7 @@
     quantityMode = this.checked ? 'kg' : 'bandejas';
     UI.updateQuantityLabels(quantityMode);
     if (!parsedData || pieMode !== 'produto') return;
-    const pieData = Parser.aggregateProductsByQuantity(parsedData, quantityMode, currentFrom, currentTo, dashboardMode);
-    Charts.renderPie(pieData, quantityMode);
+    renderDashboard(currentFrom, currentTo);
   });
 
   function setDashboardMode(mode) {

@@ -326,8 +326,15 @@ const Parser = (() => {
     rows = dashboardMode === 'cancelamentos' ? canceledRows : validRows;
 
     const vendorTotals = {};
+    const vendorTrayTotals = {};
+    const vendorKgTotals = {};
+    const productStatsMap = {};
     const vendorSaleNumbers = {};
-    parsedData.allVendors.forEach(v => { vendorTotals[v] = 0; });
+    parsedData.allVendors.forEach(v => {
+      vendorTotals[v] = 0;
+      vendorTrayTotals[v] = 0;
+      vendorKgTotals[v] = 0;
+    });
 
     // Uma venda pode ocupar várias linhas (uma por produto). Por isso a
     // quantidade é calculada pelos números distintos da coluna C.
@@ -351,10 +358,21 @@ const Parser = (() => {
     rows.forEach(row => {
       totalBruto += row.valor;
       vendorTotals[row.vendedor] = (vendorTotals[row.vendedor] || 0) + row.valor;
+      vendorTrayTotals[row.vendedor] = (vendorTrayTotals[row.vendedor] || 0) + row.quantidadeBandejas;
+      vendorKgTotals[row.vendedor] = (vendorKgTotals[row.vendedor] || 0) + row.quantidadeKg;
       if (!vendorSaleNumbers[row.vendedor]) vendorSaleNumbers[row.vendedor] = new Set();
       if (row.numeroVenda) vendorSaleNumbers[row.vendedor].add(row.numeroVenda);
       totalBandejas += row.quantidadeBandejas;
       totalKg += row.quantidadeKg;
+      const productName = canonicalProductName(row.produto);
+      if (!productStatsMap[productName]) {
+        productStatsMap[productName] = { name: productName, bandejas: 0, kg: 0, valor: 0, saleNumbers: new Set() };
+      }
+      const productStats = productStatsMap[productName];
+      productStats.bandejas += row.quantidadeBandejas;
+      productStats.kg += row.quantidadeKg;
+      productStats.valor += row.valor;
+      if (row.numeroVenda) productStats.saleNumbers.add(row.numeroVenda);
       const produtoNormalizado = norm(row.produto);
       if (produtoNormalizado.includes('shiitake')) {
         totalKgShiitake += row.quantidadeKg;
@@ -379,6 +397,17 @@ const Parser = (() => {
       .map(([name, valor]) => ({ name, valor, numeroVendas: vendorSaleCounts[name] || 0 }))
       .sort((a, b) => b.valor - a.valor)
       .filter(v => v.valor > 0);
+
+    const productStats = Object.values(productStatsMap)
+      .map(item => ({
+        name: item.name,
+        bandejas: item.bandejas,
+        kg: item.kg,
+        valor: item.valor,
+        numeroVendas: item.saleNumbers.size,
+      }))
+      .filter(item => item.bandejas > 0 || item.kg > 0 || item.valor > 0)
+      .sort((a, b) => b.bandejas - a.bandejas);
 
     const topVendor = ranking[0] || null;
     const grossWithCanceled = totalVendasValidas + totalCancelado;
@@ -453,8 +482,11 @@ const Parser = (() => {
       totalKgShiitakeFatiado,
       faturamento,
       vendorTotals,
+      vendorTrayTotals,
+      vendorKgTotals,
       vendorSaleCounts,
       ranking,
+      productStats,
       topVendor,
       cancelPct,
       filteredRows: rows.length,
@@ -473,7 +505,7 @@ const Parser = (() => {
    * Agrega vendas nao canceladas por dia calendario
    * Retorna array de { dateKey, label, total } ordenado por data
    */
-  function aggregateByDay(parsedData, dateFrom, dateTo, dashboardMode = 'vendas') {
+  function aggregateByDay(parsedData, dateFrom, dateTo, dashboardMode = 'vendas', valueMode = 'currency') {
     let rows = parsedData.rows;
 
     if (parsedData.hasDateColumn && dateFrom && dateTo) {
@@ -496,7 +528,9 @@ const Parser = (() => {
           total: 0,
         };
       }
-      map[key].total += row.valor;
+      map[key].total += valueMode === 'bandejas'
+        ? row.quantidadeBandejas
+        : (valueMode === 'kg' ? row.quantidadeKg : row.valor);
     });
 
     return Object.values(map).sort((a, b) => a.dateKey.localeCompare(b.dateKey));

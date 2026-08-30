@@ -55,7 +55,7 @@ const Charts = (() => {
    * Grafico de fluxo de vendas diarias (linha com area)
    * @param {Array} dailyAgg — array de { dateKey, label, total }
    */
-  function renderDailyFlow(dailyAgg, granularity = 'day') {
+  function renderDailyFlow(dailyAgg, granularity = 'day', valueMode = 'currency') {
     if (dailyChartInstance) { dailyChartInstance.destroy(); dailyChartInstance = null; }
 
     const labels = dailyAgg.map(d => d.label);
@@ -83,9 +83,9 @@ const Charts = (() => {
         labels,
         datasets: [
           {
-            label: granularity === 'year'
-              ? 'Vendas do Ano'
-              : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'),
+            label: valueMode === 'currency'
+              ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'))
+              : (granularity === 'year' ? 'Quantidade do Ano' : (granularity === 'month' ? 'Quantidade do Mês' : 'Quantidade do Dia')),
             data: values,
             borderColor: '#fcb900',
             backgroundColor: gradient,
@@ -131,7 +131,7 @@ const Charts = (() => {
           tooltip: {
             ...tooltipDefaults(),
             callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
+              label: ctx => ` ${ctx.dataset.label}: ${valueMode === 'currency' ? fmtBRL(ctx.parsed.y) : fmtQuantity(ctx.parsed.y, valueMode)}`,
             }
           },
         },
@@ -151,13 +151,15 @@ const Charts = (() => {
             ticks: {
               color: '#fcb900',
               font: { family: 'Inter', size: 11 },
-              callback: v => 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v),
+              callback: v => valueMode === 'currency'
+                ? 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v)
+                : new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(v),
             },
             title: {
               display: true,
-              text: granularity === 'year'
-                ? 'Vendas do Ano'
-                : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'),
+              text: valueMode === 'currency'
+                ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'))
+                : (valueMode === 'kg' ? 'Kg' : 'Bandejas'),
               color: '#fcb900',
               font: { size: 11, family: 'Inter' },
             },
@@ -168,7 +170,9 @@ const Charts = (() => {
             ticks: {
               color: '#4b8ef1',
               font: { family: 'Inter', size: 11 },
-              callback: v => 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v),
+              callback: v => valueMode === 'currency'
+                ? 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v)
+                : new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(v),
             },
             title: {
               display: true,
@@ -264,7 +268,7 @@ const Charts = (() => {
     });
   }
 
-  function renderPeriodComparison(currentSeries, previousSeries, previousLabel, granularity = 'day') {
+  function renderPeriodComparison(currentSeries, previousSeries, previousLabel, granularity = 'day', valueMode = 'currency') {
     if (comparisonChartInstance) {
       comparisonChartInstance.destroy();
       comparisonChartInstance = null;
@@ -326,7 +330,7 @@ const Charts = (() => {
                 const previousDate = previousSeries.labels[index] || '-';
                 return `Atual: ${currentDate} · Anterior: ${previousDate}`;
               },
-              label: context => ` ${context.dataset.label}: ${fmtBRL(context.parsed.y)}`,
+              label: context => ` ${context.dataset.label}: ${valueMode === 'currency' ? fmtBRL(context.parsed.y) : fmtQuantity(context.parsed.y, valueMode)}`,
             },
           },
         },
@@ -341,7 +345,9 @@ const Charts = (() => {
             ticks: {
               color: theme.muted,
               font: { family: 'Inter', size: 10 },
-              callback: value => 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value),
+              callback: value => valueMode === 'currency'
+                ? 'R$' + new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)
+                : new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(value),
             },
           },
         },

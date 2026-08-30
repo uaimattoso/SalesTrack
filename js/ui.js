@@ -113,11 +113,13 @@ const UI = (() => {
     }
   }
 
-  function updateChartGranularity(granularity, dashboardMode) {
+  function updateChartGranularity(granularity, dashboardMode, valueMode = 'currency') {
     const cancellationMode = dashboardMode === 'cancelamentos';
     const monthly = granularity === 'month';
     const yearly = granularity === 'year';
-    const subject = cancellationMode ? 'Cancelamentos' : 'Vendas';
+    const subject = valueMode === 'currency'
+      ? (cancellationMode ? 'Cancelamentos' : 'Vendas')
+      : (valueMode === 'kg' ? 'Kg Vendidos' : 'Bandejas Vendidas');
     document.getElementById('daily-chart-title').textContent = yearly
       ? `Fluxo de ${subject} Anuais`
       : (monthly ? `Fluxo de ${subject} Mensais` : `Fluxo de ${subject} Diárias`);
@@ -162,7 +164,7 @@ const UI = (() => {
     }
   }
 
-  function updateSummary(parsedData, agg, comparison) {
+  function updateSummary(parsedData, agg, comparison, valueMode = 'currency') {
     const body = document.getElementById('summaryBody');
     body.innerHTML = '';
     let html = '';
@@ -176,6 +178,50 @@ const UI = (() => {
       });
       if (agg.ranking.length === 0) {
         html += `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px">Nenhum cancelamento no período</td></tr>`;
+      }
+      body.innerHTML = html;
+      return;
+    }
+
+    if (valueMode === 'bandejas' || valueMode === 'kg') {
+      const unitLabel = valueMode === 'kg' ? 'Kg' : 'Bandejas';
+      const previousProducts = new Map(
+        (comparison?.previousAgg?.productStats || []).map(product => [product.name, product])
+      );
+      const comparisonLabel = comparison?.label || 'período anterior';
+      const totalQuantity = valueMode === 'kg' ? agg.totalKg : agg.totalBandejas;
+      const previousTotalQuantity = valueMode === 'kg'
+        ? (comparison?.previousAgg?.totalKg || 0)
+        : (comparison?.previousAgg?.totalBandejas || 0);
+      html += `<tr class="summary-header">
+        <td>Produto</td><td>Total de ${unitLabel}</td><td>Participação</td><td>Total Monetário</td><td>Média por ${valueMode === 'kg' ? 'Kg' : 'Bandeja'}</td>
+      </tr>`;
+      agg.productStats.forEach(product => {
+        const quantity = valueMode === 'kg' ? product.kg : product.bandejas;
+        const monetaryAverage = quantity > 0
+          ? Math.round((product.valor / quantity + Number.EPSILON) * 100) / 100
+          : 0;
+        const previousProduct = previousProducts.get(product.name);
+        const previousQuantity = previousProduct
+          ? (valueMode === 'kg' ? previousProduct.kg : previousProduct.bandejas)
+          : 0;
+        const previousAverage = previousQuantity > 0
+          ? Math.round((previousProduct.valor / previousQuantity + Number.EPSILON) * 100) / 100
+          : 0;
+        const participation = totalQuantity > 0 ? quantity / totalQuantity * 100 : 0;
+        const previousParticipation = previousTotalQuantity > 0
+          ? previousQuantity / previousTotalQuantity * 100
+          : 0;
+        html += `<tr>
+          <td>${product.name}</td>
+          <td class="sales-total">${fmtQty(quantity)}${summaryVariation(quantity, previousQuantity, comparisonLabel)}</td>
+          <td class="sales-count">${participation.toFixed(1).replace('.', ',')}%${summaryVariation(participation, previousParticipation, comparisonLabel)}</td>
+          <td class="sales-total">${fmt(product.valor)}${summaryVariation(product.valor, previousProduct?.valor || 0, comparisonLabel)}</td>
+          <td class="sales-average">${fmt(monetaryAverage)}${summaryVariation(monetaryAverage, previousAverage, comparisonLabel)}</td>
+        </tr>`;
+      });
+      if (!agg.productStats.length) {
+        html += `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Nenhum produto vendido no período</td></tr>`;
       }
       body.innerHTML = html;
       return;
