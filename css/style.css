@@ -561,6 +561,12 @@ body {
   background: linear-gradient(145deg, var(--bg-card), rgba(167, 139, 250, 0.12));
 }
 
+.kpi-weight.mode-active {
+  border-color: var(--teal);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.18), 0 10px 28px rgba(20, 184, 166, 0.10);
+}
+
 .kpi-card::before {
   content: '';
   position: absolute;
@@ -579,6 +585,16 @@ body {
 
 .kpi-trays .kpi-value { color: var(--purple); }
 .kpi-weight .kpi-value { color: var(--teal); }
+
+.kpi-weight .kpi-dual-value {
+  font-size: clamp(18px, 1.45vw, 25px);
+  white-space: nowrap;
+}
+
+.kpi-weight .kpi-dual-composition {
+  font-size: 10px;
+  line-height: 1.45;
+}
 
 .trays-detail {
   margin-top: 24px;
@@ -665,6 +681,31 @@ body {
 
 .trays-table .trays-zero {
   color: transparent;
+}
+
+.trays-table .trays-monetary,
+.trays-table .trays-consolidated {
+  white-space: nowrap;
+  text-align: right;
+  font-weight: 600;
+}
+
+.trays-table .trays-consolidated {
+  color: var(--purple);
+}
+
+.trays-table .trays-total-row td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--bg-card);
+  border-top: 2px solid var(--accent);
+  font-weight: 700;
+}
+
+.trays-table .trays-total-row td:first-child {
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 .trays-empty {
@@ -774,6 +815,44 @@ body {
   letter-spacing: 0.4px;
 }
 
+.chart-badge.comparison-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-badge.comparison-delta.growth {
+  color: var(--success);
+  background: rgba(0, 229, 160, 0.12);
+}
+
+.chart-badge.comparison-delta.decline {
+  color: var(--danger);
+  background: rgba(255, 77, 109, 0.12);
+}
+
+.chart-badge.comparison-delta.neutral {
+  color: var(--text-muted);
+  background: rgba(139, 143, 168, 0.12);
+}
+
+.chart-badge.comparison-delta.growth .comparison-delta-icon {
+  animation: rocket-lift 1.8s ease-in-out infinite;
+}
+
+.chart-badge.comparison-delta.decline .comparison-delta-icon {
+  animation: comparison-drop 1.4s ease-in-out infinite;
+}
+
+@keyframes comparison-drop {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-badge.comparison-delta .comparison-delta-icon { animation: none; }
+}
+
 .chart-body {
   flex: 1;
   position: relative;
@@ -793,7 +872,8 @@ body {
 
 .bottom-grid > .table-card {
   min-width: 0;
-  height: 420px;
+  min-height: 420px;
+  height: auto;
 }
 
 .table-card {
@@ -805,23 +885,27 @@ body {
 }
 
 .comparison-card {
-  height: 420px;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  height: auto;
   overflow: hidden;
 }
 
 .comparison-card .chart-body {
-  height: 350px;
+  flex: 1;
+  height: auto;
   min-height: 350px;
-  max-height: 350px;
+  max-height: none;
   overflow: hidden;
 }
 
 #comparisonChart {
   display: block;
   width: 100% !important;
-  height: 350px !important;
-  max-height: 350px !important;
+  height: 100% !important;
+  min-height: 350px;
+  max-height: none !important;
 }
 
 /* ─── RANKING TABLE ─────────────────────────── */

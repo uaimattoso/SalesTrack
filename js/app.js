@@ -13,6 +13,7 @@
   let selectedMonth = new Date();
   let activePeriodMode = 'month';
   let traysDetailOpen = false;
+  let kgDetailOpen = false;
   
   const LINK_DO_GOOGLE_SHEETS = window.SALES_TRACK_CONFIG?.sheetsCsvUrl
     || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv";
@@ -219,6 +220,54 @@
     return { labels, values };
   }
 
+  function buildWeeklySeries(dailyAgg, fromValue, toValue) {
+    const from = parseInputDate(fromValue);
+    const to = parseInputDate(toValue);
+    const weekCount = Math.ceil(to.getDate() / 7);
+    const values = Array(weekCount).fill(0);
+
+    dailyAgg.forEach(item => {
+      const date = parseInputDate(item.dateKey);
+      const weekIndex = Math.floor((date.getDate() - 1) / 7);
+      if (weekIndex >= 0 && weekIndex < values.length) values[weekIndex] += item.total;
+    });
+
+    return {
+      labels: values.map((_, index) => `Semana ${index + 1}`),
+      values,
+    };
+  }
+
+  function buildWeeklyFlow(dailyAgg, fromValue, toValue) {
+    const series = buildWeeklySeries(dailyAgg, fromValue, toValue);
+    return series.labels.map((label, index) => ({
+      dateKey: `semana-${index + 1}`,
+      label,
+      total: series.values[index],
+    }));
+  }
+
+  function buildWeekdaySeries(dailyAgg, fromValue, toValue) {
+    const dailySeries = buildDailySeries(dailyAgg, fromValue, toValue);
+    const from = parseInputDate(fromValue);
+    const labels = dailySeries.labels.map((_, index) => {
+      const date = new Date(from);
+      date.setDate(from.getDate() + index);
+      const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace('-feira', '');
+      return weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    });
+    return { labels, values: dailySeries.values };
+  }
+
+  function buildWeekdayFlow(dailyAgg, fromValue, toValue) {
+    const series = buildWeekdaySeries(dailyAgg, fromValue, toValue);
+    return series.labels.map((label, index) => ({
+      dateKey: `dia-semana-${index + 1}`,
+      label,
+      total: series.values[index],
+    }));
+  }
+
   function buildMonthlySeries(dailyAgg, fromValue, toValue) {
     const from = parseInputDate(fromValue);
     const to = parseInputDate(toValue);
@@ -282,6 +331,27 @@
     }));
   }
 
+  function updateComparisonBadge(currentSeries, previousSeries, previousLabel, valueMode) {
+    const badge = document.getElementById('comparison-period-label');
+    const currentTotal = currentSeries.values.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const previousTotal = previousSeries.values.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const difference = currentTotal - previousTotal;
+    const neutral = Math.abs(difference) < 0.005;
+    const growth = difference > 0;
+    const percentage = previousTotal > 0 ? difference / previousTotal * 100 : (currentTotal > 0 ? 100 : 0);
+    const cssClass = neutral ? 'neutral' : (growth ? 'growth' : 'decline');
+    const icon = neutral ? '•' : (growth ? '🚀' : '▼');
+    const signal = percentage > 0 ? '+' : '';
+    const absoluteDifference = valueMode === 'currency'
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(difference)
+      : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(difference)} ${valueMode === 'kg' ? 'kg' : 'bandejas'}`;
+
+    badge.classList.remove('growth', 'decline', 'neutral');
+    badge.classList.add('comparison-delta', cssClass);
+    badge.title = `Diferença absoluta: ${absoluteDifference}`;
+    badge.innerHTML = `<span class="comparison-delta-icon">${icon}</span>${signal}${percentage.toFixed(1).replace('.', ',')}% vs ${previousLabel}`;
+  }
+
   // ─── LEITURA DE DADOS (GOOGLE SHEETS) ─────────────────────────
 
   async function fetchData() {
@@ -342,43 +412,62 @@
     const to   = dateTo   || currentTo;
 
     const agg      = Parser.aggregate(parsedData, from, to, dashboardMode);
-    const dashboardValueMode = traysDetailOpen ? quantityMode : 'currency';
-    const dailyAgg = Parser.aggregateByDay(parsedData, from, to, dashboardMode, dashboardValueMode);
+    const productScope = kgDetailOpen ? 'shiitake' : null;
+    const dashboardValueMode = kgDetailOpen ? 'kg' : (traysDetailOpen ? quantityMode : 'currency');
+    const dailyAgg = Parser.aggregateByDay(parsedData, from, to, dashboardMode, dashboardValueMode, productScope);
     const previousRange = getPreviousRange(from, to);
     const previousAgg = Parser.aggregate(parsedData, previousRange.from, previousRange.to, dashboardMode);
-    const previousDailyAgg = Parser.aggregateByDay(parsedData, previousRange.from, previousRange.to, dashboardMode, dashboardValueMode);
+    const previousDailyAgg = Parser.aggregateByDay(parsedData, previousRange.from, previousRange.to, dashboardMode, dashboardValueMode, productScope);
     const comparison = {
       label: previousRange.label,
       previousAgg,
     };
-    const pieData = pieMode === 'produto'
+    let pieData = pieMode === 'produto'
       ? Parser.aggregateProductsByQuantity(parsedData, quantityMode, from, to, dashboardMode)
       : Parser.aggregateByField(parsedData, 'cliente', from, to, dashboardMode);
+    if (productScope === 'shiitake') {
+      pieData = pieData.filter(product => Parser.norm(product.name).includes('shiitake'));
+    }
 
     UI.showDashboard();
     UI.updateKPIs(agg, comparison);
     document.getElementById('traysDetailCard').classList.toggle('mode-active', traysDetailOpen);
-    document.getElementById('pieSwitchContainer').classList.toggle('hidden', traysDetailOpen || !parsedData.hasProdutoColumn);
+    document.getElementById('kgDetailCard').classList.toggle('mode-active', kgDetailOpen);
+    document.getElementById('pieSwitchContainer').classList.toggle('hidden', traysDetailOpen || kgDetailOpen || !parsedData.hasProdutoColumn);
+    document.getElementById('quantitySwitchContainer').classList.toggle('hidden', kgDetailOpen || pieMode !== 'produto');
     if (traysDetailOpen) {
       document.getElementById('comparison-title').textContent = `Comparativo de ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
       document.getElementById('summary-title').textContent = `Resumo por ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
+    } else if (kgDetailOpen) {
+      document.getElementById('comparison-title').textContent = 'Comparativo de Kg de Shiitake';
+      document.getElementById('summary-title').textContent = 'Resumo de Shiitake por Kg';
     }
-    UI.updateSummary(parsedData, agg, comparison, dashboardValueMode);
+    UI.updateSummary(parsedData, agg, comparison, dashboardValueMode, productScope);
     UI.updateFileInfo(parsedData, agg);
     UI.updateFooter();
     UI.setupDateFilter(parsedData.hasDateColumn);
 
     const chartGranularity = activePeriodMode === 'all'
       ? 'year'
-      : (activePeriodMode === 'year' ? 'month' : 'day');
+      : (activePeriodMode === 'year'
+        ? 'month'
+        : (activePeriodMode === 'month' ? 'week' : (activePeriodMode === 'week' ? 'weekday' : 'day')));
     const flowData = chartGranularity === 'year'
       ? buildYearlyFlow(dailyAgg, from, to)
-      : (chartGranularity === 'month' ? buildMonthlyFlow(dailyAgg, from, to) : dailyAgg);
+      : (chartGranularity === 'month'
+        ? buildMonthlyFlow(dailyAgg, from, to)
+        : (chartGranularity === 'week'
+          ? buildWeeklyFlow(dailyAgg, from, to)
+          : (chartGranularity === 'weekday' ? buildWeekdayFlow(dailyAgg, from, to) : dailyAgg)));
     const currentSeries = chartGranularity === 'year'
       ? buildYearlySeries(dailyAgg, from, to)
       : (chartGranularity === 'month'
         ? buildMonthlySeries(dailyAgg, from, to)
-        : buildDailySeries(dailyAgg, from, to));
+        : (chartGranularity === 'week'
+          ? buildWeeklySeries(dailyAgg, from, to)
+          : (chartGranularity === 'weekday'
+            ? buildWeekdaySeries(dailyAgg, from, to)
+            : buildDailySeries(dailyAgg, from, to))));
 
     let chartPreviousLabel = previousRange.label;
     let previousSeries;
@@ -392,17 +481,26 @@
         previousYearFrom,
         previousYearTo,
         dashboardMode,
-        dashboardValueMode
+        dashboardValueMode,
+        productScope
       );
       previousSeries = buildYearlySeries(previousYearDailyAgg, previousYearFrom, previousYearTo);
       chartPreviousLabel = 'ano anterior';
     } else {
       previousSeries = chartGranularity === 'month'
         ? buildMonthlySeries(previousDailyAgg, previousRange.from, previousRange.to)
-        : buildDailySeries(previousDailyAgg, previousRange.from, previousRange.to);
+        : (chartGranularity === 'week'
+          ? buildWeeklySeries(previousDailyAgg, previousRange.from, previousRange.to)
+          : (chartGranularity === 'weekday'
+            ? buildWeekdaySeries(previousDailyAgg, previousRange.from, previousRange.to)
+            : buildDailySeries(previousDailyAgg, previousRange.from, previousRange.to)));
     }
 
     UI.updateChartGranularity(chartGranularity, dashboardMode, dashboardValueMode);
+    if (kgDetailOpen) {
+      const flowTitle = document.getElementById('daily-chart-title');
+      flowTitle.textContent = flowTitle.textContent.replace('Kg Vendidos', 'Kg de Shiitake Vendidos');
+    }
     Charts.renderDailyFlow(flowData, chartGranularity, dashboardValueMode);
     Charts.renderPie(pieData, pieMode === 'produto' ? quantityMode : 'currency');
     Charts.renderPeriodComparison(
@@ -412,7 +510,7 @@
       chartGranularity,
       dashboardValueMode
     );
-    document.getElementById('comparison-period-label').textContent = `Atual × ${chartPreviousLabel}`;
+    updateComparisonBadge(currentSeries, previousSeries, chartPreviousLabel, dashboardValueMode);
 
     if (traysDetailOpen) {
       const pivot = Parser.buildSalesProductPivot(parsedData, from, to, dashboardMode);
@@ -456,6 +554,7 @@
 
   document.getElementById('cancellationModeCard').addEventListener('click', () => {
     traysDetailOpen = false;
+    kgDetailOpen = false;
     pieMode = 'cliente';
     document.getElementById('pieSwitch').checked = false;
     UI.updatePieLabels('cliente');
@@ -465,6 +564,7 @@
 
   document.getElementById('salesModeCard').addEventListener('click', () => {
     traysDetailOpen = false;
+    kgDetailOpen = false;
     pieMode = 'cliente';
     document.getElementById('pieSwitch').checked = false;
     UI.updatePieLabels('cliente');
@@ -484,6 +584,7 @@
     }
 
     dashboardMode = 'vendas';
+    kgDetailOpen = false;
     pieMode = 'produto';
     quantityMode = 'bandejas';
     traysDetailOpen = true;
@@ -502,8 +603,43 @@
       toggleTraysDetail();
     }
   });
+
+  function toggleKgDetail() {
+    if (kgDetailOpen) {
+      kgDetailOpen = false;
+      pieMode = 'cliente';
+      quantityMode = 'bandejas';
+      document.getElementById('pieSwitch').checked = false;
+      document.getElementById('quantitySwitch').checked = false;
+      UI.updatePieLabels('cliente');
+      UI.updateQuantityLabels('bandejas');
+      renderDashboard(currentFrom, currentTo);
+      return;
+    }
+
+    dashboardMode = 'vendas';
+    traysDetailOpen = false;
+    kgDetailOpen = true;
+    pieMode = 'produto';
+    quantityMode = 'kg';
+    document.getElementById('pieSwitch').checked = true;
+    document.getElementById('quantitySwitch').checked = true;
+    UI.updatePieLabels('produto');
+    UI.updateQuantityLabels('kg');
+    document.getElementById('traysDetailPanel').classList.add('hidden');
+    renderDashboard(currentFrom, currentTo);
+  }
+
+  document.getElementById('kgDetailCard').addEventListener('click', toggleKgDetail);
+  document.getElementById('kgDetailCard').addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleKgDetail();
+    }
+  });
   document.getElementById('closeTraysDetail').addEventListener('click', () => {
     traysDetailOpen = false;
+    kgDetailOpen = false;
     pieMode = 'cliente';
     document.getElementById('pieSwitch').checked = false;
     UI.updatePieLabels('cliente');

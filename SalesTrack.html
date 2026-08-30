@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20">
+    <link rel="stylesheet" href="css/style.css?v=36">
 </head>
 <body>
 
@@ -94,10 +94,10 @@
                     <div class="kpi-sub">Conversão padrão em bandejas</div>
                     <div class="kpi-variation" id="kpi-bandejas-variation"></div>
                 </div>
-                <div class="kpi-card kpi-weight">
-                    <div class="kpi-label" id="kpi-kg-label">Kg de Shiitake Vendidos</div>
-                    <div class="kpi-value" id="kpi-kg">0,00 kg</div>
-                    <div class="kpi-sub" id="kpi-kg-composition">Inteiro: 0,00 kg · Fatiado: 0,00 kg</div>
+                <div class="kpi-card kpi-weight kpi-clickable" id="kgDetailCard" role="button" tabindex="0" title="Abrir análise de Kg de Shiitake vendidos">
+                    <div class="kpi-label" id="kpi-kg-label">Volume de Shiitake Vendido</div>
+                    <div class="kpi-value kpi-dual-value" id="kpi-kg">0 bdj · 0,00 kg</div>
+                    <div class="kpi-sub kpi-dual-composition" id="kpi-kg-composition">Inteiro: 0 bdj · 0,00 kg | Fatiado: 0 bdj · 0,00 kg</div>
                     <div class="kpi-variation" id="kpi-kg-variation"></div>
                 </div>
                 <div class="kpi-card kpi-danger kpi-clickable" id="cancellationModeCard" role="button" tabindex="0" title="Alternar visão de cancelamentos">
@@ -204,9 +204,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="js/theme.js?v=1"></script>
-    <script src="js/parser.js?v=23"></script>
-    <script src="js/charts.js?v=22"></script>
-    <script src="js/ui.js?v=26"></script>
-    <script src="js/app.js?v=22"></script>
+    <script src="js/parser.js?v=39"></script>
+    <script src="js/charts.js?v=31"></script>
+    <script src="js/ui.js?v=39"></script>
+    <script src="js/app.js?v=38"></script>
 </body>
 </html>

@@ -354,6 +354,9 @@ const Parser = (() => {
     let totalKgShiitake = 0;
     let totalKgShiitakeInteiro = 0;
     let totalKgShiitakeFatiado = 0;
+    let totalBandejasShiitake = 0;
+    let totalBandejasShiitakeInteiro = 0;
+    let totalBandejasShiitakeFatiado = 0;
 
     rows.forEach(row => {
       totalBruto += row.valor;
@@ -376,11 +379,14 @@ const Parser = (() => {
       const produtoNormalizado = norm(row.produto);
       if (produtoNormalizado.includes('shiitake')) {
         totalKgShiitake += row.quantidadeKg;
+        totalBandejasShiitake += row.quantidadeBandejas;
         if (produtoNormalizado.includes('inteiro')) {
           totalKgShiitakeInteiro += row.quantidadeKg;
+          totalBandejasShiitakeInteiro += row.quantidadeBandejas;
         }
         if (produtoNormalizado.includes('fatiado')) {
           totalKgShiitakeFatiado += row.quantidadeKg;
+          totalBandejasShiitakeFatiado += row.quantidadeBandejas;
         }
       }
     });
@@ -480,6 +486,9 @@ const Parser = (() => {
       totalKgShiitake,
       totalKgShiitakeInteiro,
       totalKgShiitakeFatiado,
+      totalBandejasShiitake,
+      totalBandejasShiitakeInteiro,
+      totalBandejasShiitakeFatiado,
       faturamento,
       vendorTotals,
       vendorTrayTotals,
@@ -505,7 +514,7 @@ const Parser = (() => {
    * Agrega vendas nao canceladas por dia calendario
    * Retorna array de { dateKey, label, total } ordenado por data
    */
-  function aggregateByDay(parsedData, dateFrom, dateTo, dashboardMode = 'vendas', valueMode = 'currency') {
+  function aggregateByDay(parsedData, dateFrom, dateTo, dashboardMode = 'vendas', valueMode = 'currency', productScope = null) {
     let rows = parsedData.rows;
 
     if (parsedData.hasDateColumn && dateFrom && dateTo) {
@@ -518,6 +527,7 @@ const Parser = (() => {
 
     rows.forEach(row => {
       if (!row.date || (dashboardMode === 'cancelamentos' ? !row.canceled : row.canceled)) return;
+      if (productScope === 'shiitake' && !norm(row.produto).includes('shiitake')) return;
       const d = row.date;
       // Chave no formato yyyy-mm-dd para ordenacao correta
       const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -585,6 +595,7 @@ const Parser = (() => {
       return 'Shimeji';
     }
     if (product.includes('enoki')) return 'Enoki';
+    if (product.includes('eryngui')) return 'Eryngui';
 
     // Remove apenas referências de peso da embalagem para unir variações
     // como "Produto 200g" e "Produto 1kg" sem perder o nome comercial.
@@ -659,10 +670,14 @@ const Parser = (() => {
           date: row.date,
           cliente: row.cliente,
           products: {},
+          valorLiquido: 0,
+          totalBandejas: 0,
         });
       }
       const sale = sales.get(saleKey);
       sale.products[product] = (sale.products[product] || 0) + quantity;
+      sale.valorLiquido += Number(row.valor) || 0;
+      sale.totalBandejas += quantity;
       productTotals.set(product, (productTotals.get(product) || 0) + quantity);
     });
 
@@ -670,13 +685,26 @@ const Parser = (() => {
       .filter(([, total]) => total > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([name]) => name);
-    const pivotRows = [...sales.values()].sort((a, b) => {
-      const dateDifference = (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
-      if (dateDifference) return dateDifference;
-      return String(b.numeroVenda).localeCompare(String(a.numeroVenda), 'pt-BR', { numeric: true });
-    });
+    const pivotRows = [...sales.values()].sort((a, b) =>
+      String(a.numeroVenda).localeCompare(String(b.numeroVenda), 'pt-BR', { numeric: true })
+    );
 
-    return { columns, rows: pivotRows };
+    const totalValorLiquido = pivotRows.reduce((sum, sale) => sum + sale.valorLiquido, 0);
+    const totalBandejas = pivotRows.reduce((sum, sale) => sum + sale.totalBandejas, 0);
+    const productPeriodTotals = Object.fromEntries(
+      columns.map(product => [product, productTotals.get(product) || 0])
+    );
+
+    return {
+      columns,
+      rows: pivotRows,
+      totals: {
+        products: productPeriodTotals,
+        valorLiquido: totalValorLiquido,
+        totalBandejas,
+        mediaPorBandeja: totalBandejas > 0 ? totalValorLiquido / totalBandejas : 0,
+      },
+    };
   }
 
   return { process, aggregate, aggregateByDay, aggregateByField, aggregateProductsByQuantity, buildSalesProductPivot, norm, calcPeriodo };

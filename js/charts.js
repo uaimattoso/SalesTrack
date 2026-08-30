@@ -84,8 +84,8 @@ const Charts = (() => {
         datasets: [
           {
             label: valueMode === 'currency'
-              ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'))
-              : (granularity === 'year' ? 'Quantidade do Ano' : (granularity === 'month' ? 'Quantidade do Mês' : 'Quantidade do Dia')),
+              ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : (granularity === 'week' ? 'Vendas da Semana' : 'Vendas do Dia')))
+              : (granularity === 'year' ? 'Quantidade do Ano' : (granularity === 'month' ? 'Quantidade do Mês' : (granularity === 'week' ? 'Quantidade da Semana' : 'Quantidade do Dia'))),
             data: values,
             borderColor: '#fcb900',
             backgroundColor: gradient,
@@ -158,7 +158,7 @@ const Charts = (() => {
             title: {
               display: true,
               text: valueMode === 'currency'
-                ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : 'Vendas do Dia'))
+                ? (granularity === 'year' ? 'Vendas do Ano' : (granularity === 'month' ? 'Vendas do Mês' : (granularity === 'week' ? 'Vendas da Semana' : 'Vendas do Dia')))
                 : (valueMode === 'kg' ? 'Kg' : 'Bandejas'),
               color: '#fcb900',
               font: { size: 11, family: 'Inter' },
@@ -275,10 +275,10 @@ const Charts = (() => {
     }
 
     const length = Math.max(currentSeries.values.length, previousSeries.values.length);
-    const labels = granularity === 'month' || granularity === 'year'
+    const labels = granularity === 'month' || granularity === 'year' || granularity === 'week' || granularity === 'weekday'
       ? Array.from({ length }, (_, index) => currentSeries.labels[index]
         || previousSeries.labels[index]
-        || `${granularity === 'year' ? 'Ano' : 'Mês'} ${index + 1}`)
+        || `${granularity === 'year' ? 'Ano' : (granularity === 'month' ? 'Mês' : (granularity === 'week' ? 'Semana' : 'Dia'))} ${index + 1}`)
       : Array.from({ length }, (_, index) => `Dia ${index + 1}`);
     const currentValues = [...currentSeries.values, ...Array(Math.max(0, length - currentSeries.values.length)).fill(null)];
     const previousValues = [...previousSeries.values, ...Array(Math.max(0, length - previousSeries.values.length)).fill(null)];
@@ -331,6 +331,26 @@ const Charts = (() => {
                 return `Atual: ${currentDate} · Anterior: ${previousDate}`;
               },
               label: context => ` ${context.dataset.label}: ${valueMode === 'currency' ? fmtBRL(context.parsed.y) : fmtQuantity(context.parsed.y, valueMode)}`,
+              afterBody: items => {
+                const index = items[0]?.dataIndex || 0;
+                const current = Number(currentValues[index]) || 0;
+                const previous = Number(previousValues[index]) || 0;
+                const difference = current - previous;
+                const percentage = previous !== 0
+                  ? difference / previous * 100
+                  : (current !== 0 ? 100 : 0);
+                const neutral = Math.abs(difference) < 0.005;
+                const icon = neutral ? '•' : (difference > 0 ? '🚀' : '▼');
+                const signal = percentage > 0 ? '+' : '';
+                const absolute = valueMode === 'currency'
+                  ? fmtBRL(difference)
+                  : fmtQuantity(difference, valueMode);
+                return [
+                  '',
+                  ` ${icon} Diferença: ${absolute}`,
+                  ` Variação: ${signal}${percentage.toFixed(1).replace('.', ',')}%`,
+                ];
+              },
             },
           },
         },

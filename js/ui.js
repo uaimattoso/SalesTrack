@@ -64,16 +64,17 @@ const UI = (() => {
       `${cancellationMode ? 'Cancelamentos' : 'Vendas'} do Período (${agg.totalVendas})`;
     document.getElementById('kpi-toneladas').textContent     = fmtQty(agg.totalKg / 1000, 2) + ' t';
     document.getElementById('kpi-bandejas').textContent      = fmtQty(agg.totalBandejas);
-    document.getElementById('kpi-kg').textContent            = fmtQty(agg.totalKgShiitake, 2) + ' kg';
+    document.getElementById('kpi-kg').textContent            =
+      `${fmtQty(agg.totalBandejasShiitake)} bdj · ${fmtQty(agg.totalKgShiitake, 2)} kg`;
     document.getElementById('kpi-kg-composition').textContent =
-      `Inteiro: ${fmtQty(agg.totalKgShiitakeInteiro, 2)} kg · Fatiado: ${fmtQty(agg.totalKgShiitakeFatiado, 2)} kg`;
+      `Inteiro: ${fmtQty(agg.totalBandejasShiitakeInteiro)} bdj · ${fmtQty(agg.totalKgShiitakeInteiro, 2)} kg | Fatiado: ${fmtQty(agg.totalBandejasShiitakeFatiado)} bdj · ${fmtQty(agg.totalKgShiitakeFatiado, 2)} kg`;
     document.getElementById('kpi-cancelamentos').textContent = fmt(agg.totalCancelado);
     document.getElementById('kpi-cancel-label').textContent  = `Cancelamentos (${agg.totalCancelamentos})`;
     document.getElementById('kpi-cancel-pct').textContent    = cancellationMode
       ? 'Exibindo cancelamentos · clique para voltar'
       : pct(agg.cancelPct) + ' do valor total · clique para analisar';
     document.getElementById('kpi-bandejas-label').textContent = cancellationMode ? 'Bandejas Canceladas' : 'Bandejas Vendidas';
-    document.getElementById('kpi-kg-label').textContent = cancellationMode ? 'Kg de Shiitake Cancelado' : 'Kg de Shiitake Vendidos';
+    document.getElementById('kpi-kg-label').textContent = cancellationMode ? 'Volume de Shiitake Cancelado' : 'Volume de Shiitake Vendido';
     document.getElementById('kpi-toneladas-label').textContent = cancellationMode ? 'Toneladas Canceladas' : 'Venda Total em Toneladas';
     document.getElementById('kpi-top-label').textContent = cancellationMode ? 'Maior Valor Cancelado' : 'Melhor Vendedor';
     document.getElementById('daily-chart-title').textContent = cancellationMode ? 'Fluxo de Cancelamentos Diários' : 'Fluxo de Vendas Diárias';
@@ -116,16 +117,17 @@ const UI = (() => {
   function updateChartGranularity(granularity, dashboardMode, valueMode = 'currency') {
     const cancellationMode = dashboardMode === 'cancelamentos';
     const monthly = granularity === 'month';
+    const weekly = granularity === 'week';
     const yearly = granularity === 'year';
     const subject = valueMode === 'currency'
       ? (cancellationMode ? 'Cancelamentos' : 'Vendas')
       : (valueMode === 'kg' ? 'Kg Vendidos' : 'Bandejas Vendidas');
     document.getElementById('daily-chart-title').textContent = yearly
       ? `Fluxo de ${subject} Anuais`
-      : (monthly ? `Fluxo de ${subject} Mensais` : `Fluxo de ${subject} Diárias`);
+      : (monthly ? `Fluxo de ${subject} Mensais` : (weekly ? `Fluxo de ${subject} Semanais` : `Fluxo de ${subject} Diárias`));
     document.getElementById('flow-period-label').textContent = yearly
       ? 'Ano a Ano'
-      : (monthly ? 'Mês a Mês' : 'Dia a Dia');
+      : (monthly ? 'Mês a Mês' : (weekly ? 'Semana a Semana' : 'Dia a Dia'));
   }
 
   function updateRanking(agg) {
@@ -164,7 +166,7 @@ const UI = (() => {
     }
   }
 
-  function updateSummary(parsedData, agg, comparison, valueMode = 'currency') {
+  function updateSummary(parsedData, agg, comparison, valueMode = 'currency', productScope = null) {
     const body = document.getElementById('summaryBody');
     body.innerHTML = '';
     let html = '';
@@ -185,19 +187,30 @@ const UI = (() => {
 
     if (valueMode === 'bandejas' || valueMode === 'kg') {
       const unitLabel = valueMode === 'kg' ? 'Kg' : 'Bandejas';
+      const currentProductStats = (agg.productStats || []).filter(product =>
+        productScope !== 'shiitake' || normProductForScope(product.name).includes('shiitake')
+      );
+      const previousProductStats = (comparison?.previousAgg?.productStats || []).filter(product =>
+        productScope !== 'shiitake' || normProductForScope(product.name).includes('shiitake')
+      );
       const previousProducts = new Map(
-        (comparison?.previousAgg?.productStats || []).map(product => [product.name, product])
+        previousProductStats.map(product => [product.name, product])
       );
       const comparisonLabel = comparison?.label || 'período anterior';
-      const totalQuantity = valueMode === 'kg' ? agg.totalKg : agg.totalBandejas;
-      const previousTotalQuantity = valueMode === 'kg'
-        ? (comparison?.previousAgg?.totalKg || 0)
-        : (comparison?.previousAgg?.totalBandejas || 0);
+      const totalQuantity = currentProductStats.reduce(
+        (sum, product) => sum + (valueMode === 'kg' ? product.kg : product.bandejas), 0
+      );
+      const previousTotalQuantity = previousProductStats.reduce(
+        (sum, product) => sum + (valueMode === 'kg' ? product.kg : product.bandejas), 0
+      );
       html += `<tr class="summary-header">
         <td>Produto</td><td>Total de ${unitLabel}</td><td>Participação</td><td>Total Monetário</td><td>Média por ${valueMode === 'kg' ? 'Kg' : 'Bandeja'}</td>
       </tr>`;
-      agg.productStats.forEach(product => {
+      currentProductStats.forEach(product => {
         const quantity = valueMode === 'kg' ? product.kg : product.bandejas;
+        const formattedQuantity = valueMode === 'kg'
+          ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(quantity)
+          : fmtQty(quantity);
         const monetaryAverage = quantity > 0
           ? Math.round((product.valor / quantity + Number.EPSILON) * 100) / 100
           : 0;
@@ -214,13 +227,13 @@ const UI = (() => {
           : 0;
         html += `<tr>
           <td>${product.name}</td>
-          <td class="sales-total">${fmtQty(quantity)}${summaryVariation(quantity, previousQuantity, comparisonLabel)}</td>
+          <td class="sales-total">${formattedQuantity}${summaryVariation(quantity, previousQuantity, comparisonLabel)}</td>
           <td class="sales-count">${participation.toFixed(1).replace('.', ',')}%${summaryVariation(participation, previousParticipation, comparisonLabel)}</td>
           <td class="sales-total">${fmt(product.valor)}${summaryVariation(product.valor, previousProduct?.valor || 0, comparisonLabel)}</td>
           <td class="sales-average">${fmt(monetaryAverage)}${summaryVariation(monetaryAverage, previousAverage, comparisonLabel)}</td>
         </tr>`;
       });
-      if (!agg.productStats.length) {
+      if (!currentProductStats.length) {
         html += `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Nenhum produto vendido no período</td></tr>`;
       }
       body.innerHTML = html;
@@ -269,6 +282,10 @@ const UI = (() => {
     });
 
     body.innerHTML = html;
+  }
+
+  function normProductForScope(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
   function updateSyncStatus(msg, state) {
@@ -377,7 +394,15 @@ const UI = (() => {
     period.textContent = periodLabel || 'Período selecionado';
 
     const headerRow = document.createElement('tr');
-    ['Número da venda', 'Data da venda', 'Cliente', ...pivot.columns].forEach(label => {
+    [
+      'Número da venda',
+      'Data da venda',
+      'Cliente',
+      ...pivot.columns,
+      'Valor líquido da NFe',
+      'Média monetária por bandeja',
+      'Consolidado',
+    ].forEach(label => {
       const th = document.createElement('th');
       th.textContent = label;
       headerRow.appendChild(th);
@@ -388,7 +413,7 @@ const UI = (() => {
     if (!pivot.rows.length) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.colSpan = Math.max(3, pivot.columns.length + 3);
+      td.colSpan = Math.max(6, pivot.columns.length + 6);
       td.className = 'trays-empty';
       td.textContent = 'Nenhuma bandeja vendida no período selecionado.';
       tr.appendChild(td);
@@ -411,8 +436,40 @@ const UI = (() => {
         td.textContent = value > 0 ? fmtQty(value) : '';
         tr.appendChild(td);
       });
+      const average = sale.totalBandejas > 0 ? sale.valorLiquido / sale.totalBandejas : 0;
+      [fmt(sale.valorLiquido), fmt(average), fmtQty(sale.totalBandejas)].forEach((value, index) => {
+        const td = document.createElement('td');
+        td.className = index === 2 ? 'trays-consolidated' : 'trays-monetary';
+        td.textContent = value;
+        tr.appendChild(td);
+      });
       body.appendChild(tr);
     });
+
+    const totalsRow = document.createElement('tr');
+    totalsRow.className = 'trays-total-row';
+    ['Total do período', '', ''].forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      totalsRow.appendChild(td);
+    });
+    pivot.columns.forEach(product => {
+      const td = document.createElement('td');
+      td.className = 'trays-quantity';
+      td.textContent = fmtQty(pivot.totals.products[product] || 0);
+      totalsRow.appendChild(td);
+    });
+    [
+      fmt(pivot.totals.valorLiquido),
+      fmt(pivot.totals.mediaPorBandeja),
+      fmtQty(pivot.totals.totalBandejas),
+    ].forEach((value, index) => {
+      const td = document.createElement('td');
+      td.className = index === 2 ? 'trays-consolidated' : 'trays-monetary';
+      td.textContent = value;
+      totalsRow.appendChild(td);
+    });
+    body.appendChild(totalsRow);
   }
 
   return {
