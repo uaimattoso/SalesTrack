@@ -310,7 +310,7 @@ const Parser = (() => {
   /**
    * Agrega os dados por vendedor (respeitando filtro de data)
    */
-  function aggregate(parsedData, dateFrom, dateTo, dashboardMode = 'vendas') {
+  function aggregate(parsedData, dateFrom, dateTo, dashboardMode = 'vendas', productScope = null) {
     let rows = parsedData.rows;
 
     // Filtro de data (se aplicado via UI)
@@ -318,6 +318,10 @@ const Parser = (() => {
       const from = parseFilterDate(dateFrom);
       const to   = parseFilterDate(dateTo, true);
       rows = rows.filter(r => r.date && r.date >= from && r.date <= to);
+    }
+
+    if (productScope === 'shiitake') {
+      rows = rows.filter(row => norm(row.produto).includes('shiitake'));
     }
 
     const periodRows = rows;
@@ -501,6 +505,7 @@ const Parser = (() => {
       filteredRows: rows.length,
       totalVendas,
       dashboardMode,
+      productScope,
       periodo,
       comissoes,
       comissoesPorVendedor,

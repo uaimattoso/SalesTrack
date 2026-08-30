@@ -74,7 +74,7 @@ const UI = (() => {
       ? 'Exibindo cancelamentos · clique para voltar'
       : pct(agg.cancelPct) + ' do valor total · clique para analisar';
     document.getElementById('kpi-bandejas-label').textContent = cancellationMode ? 'Bandejas Canceladas' : 'Bandejas Vendidas';
-    document.getElementById('kpi-kg-label').textContent = cancellationMode ? 'Volume de Shiitake Cancelado' : 'Volume de Shiitake Vendido';
+    document.getElementById('kpi-kg-label').textContent = cancellationMode ? 'Shiitake Cancelado' : 'Shiitake';
     document.getElementById('kpi-toneladas-label').textContent = cancellationMode ? 'Toneladas Canceladas' : 'Venda Total em Toneladas';
     document.getElementById('kpi-top-label').textContent = cancellationMode ? 'Maior Valor Cancelado' : 'Melhor Vendedor';
     document.getElementById('daily-chart-title').textContent = cancellationMode ? 'Fluxo de Cancelamentos Diários' : 'Fluxo de Vendas Diárias';

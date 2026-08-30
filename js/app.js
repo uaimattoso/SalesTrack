@@ -411,12 +411,12 @@
     const from = dateFrom || currentFrom;
     const to   = dateTo   || currentTo;
 
-    const agg      = Parser.aggregate(parsedData, from, to, dashboardMode);
     const productScope = kgDetailOpen ? 'shiitake' : null;
-    const dashboardValueMode = kgDetailOpen ? 'kg' : (traysDetailOpen ? quantityMode : 'currency');
+    const agg      = Parser.aggregate(parsedData, from, to, dashboardMode, productScope);
+    const dashboardValueMode = (kgDetailOpen || traysDetailOpen) ? quantityMode : 'currency';
     const dailyAgg = Parser.aggregateByDay(parsedData, from, to, dashboardMode, dashboardValueMode, productScope);
     const previousRange = getPreviousRange(from, to);
-    const previousAgg = Parser.aggregate(parsedData, previousRange.from, previousRange.to, dashboardMode);
+    const previousAgg = Parser.aggregate(parsedData, previousRange.from, previousRange.to, dashboardMode, productScope);
     const previousDailyAgg = Parser.aggregateByDay(parsedData, previousRange.from, previousRange.to, dashboardMode, dashboardValueMode, productScope);
     const comparison = {
       label: previousRange.label,
@@ -434,13 +434,20 @@
     document.getElementById('traysDetailCard').classList.toggle('mode-active', traysDetailOpen);
     document.getElementById('kgDetailCard').classList.toggle('mode-active', kgDetailOpen);
     document.getElementById('pieSwitchContainer').classList.toggle('hidden', traysDetailOpen || kgDetailOpen || !parsedData.hasProdutoColumn);
-    document.getElementById('quantitySwitchContainer').classList.toggle('hidden', kgDetailOpen || pieMode !== 'produto');
+    document.getElementById('quantitySwitchContainer').classList.toggle('hidden', pieMode !== 'produto');
     if (traysDetailOpen) {
       document.getElementById('comparison-title').textContent = `Comparativo de ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
       document.getElementById('summary-title').textContent = `Resumo por ${quantityMode === 'kg' ? 'Kg' : 'Bandejas'}`;
     } else if (kgDetailOpen) {
-      document.getElementById('comparison-title').textContent = 'Comparativo de Kg de Shiitake';
-      document.getElementById('summary-title').textContent = 'Resumo de Shiitake por Kg';
+      document.getElementById('kpi-total-label').textContent = `Vendas de Shiitake do Período (${agg.totalVendas})`;
+      document.getElementById('kpi-toneladas-label').textContent = 'Shiitake em Toneladas';
+      document.getElementById('kpi-bandejas-label').textContent = 'Bandejas de Shiitake';
+      document.getElementById('kpi-kg-label').textContent = 'Shiitake';
+      document.getElementById('kpi-cancel-label').textContent = `Cancelamentos de Shiitake (${agg.totalCancelamentos})`;
+      document.getElementById('kpi-top-label').textContent = 'Melhor Vendedor de Shiitake';
+      const shiitakeUnit = quantityMode === 'kg' ? 'Kg' : 'Bandejas';
+      document.getElementById('comparison-title').textContent = `Comparativo de ${shiitakeUnit} de Shiitake`;
+      document.getElementById('summary-title').textContent = `Resumo de Shiitake por ${shiitakeUnit}`;
     }
     UI.updateSummary(parsedData, agg, comparison, dashboardValueMode, productScope);
     UI.updateFileInfo(parsedData, agg);
@@ -499,7 +506,9 @@
     UI.updateChartGranularity(chartGranularity, dashboardMode, dashboardValueMode);
     if (kgDetailOpen) {
       const flowTitle = document.getElementById('daily-chart-title');
-      flowTitle.textContent = flowTitle.textContent.replace('Kg Vendidos', 'Kg de Shiitake Vendidos');
+      flowTitle.textContent = quantityMode === 'kg'
+        ? flowTitle.textContent.replace('Kg Vendidos', 'Kg de Shiitake Vendidos')
+        : flowTitle.textContent.replace('Bandejas Vendidas', 'Bandejas de Shiitake Vendidas');
     }
     Charts.renderDailyFlow(flowData, chartGranularity, dashboardValueMode);
     Charts.renderPie(pieData, pieMode === 'produto' ? quantityMode : 'currency');
