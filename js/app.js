@@ -356,6 +356,7 @@
 
     UI.showDashboard();
     UI.updateKPIs(agg, comparison);
+    document.getElementById('traysDetailCard').classList.toggle('mode-active', traysDetailOpen);
     UI.updateSummary(parsedData, agg, comparison);
     UI.updateFileInfo(parsedData, agg);
     UI.updateFooter();
@@ -447,12 +448,34 @@
   }
 
   document.getElementById('cancellationModeCard').addEventListener('click', () => {
+    traysDetailOpen = false;
+    pieMode = 'cliente';
+    document.getElementById('pieSwitch').checked = false;
+    UI.updatePieLabels('cliente');
+    document.getElementById('traysDetailPanel').classList.add('hidden');
     setDashboardMode(dashboardMode === 'cancelamentos' ? 'vendas' : 'cancelamentos');
   });
 
-  document.getElementById('salesModeCard').addEventListener('click', () => setDashboardMode('vendas'));
+  document.getElementById('salesModeCard').addEventListener('click', () => {
+    traysDetailOpen = false;
+    pieMode = 'cliente';
+    document.getElementById('pieSwitch').checked = false;
+    UI.updatePieLabels('cliente');
+    document.getElementById('traysDetailPanel').classList.add('hidden');
+    setDashboardMode('vendas');
+  });
 
-  function openTraysDetail() {
+  function toggleTraysDetail() {
+    if (traysDetailOpen) {
+      traysDetailOpen = false;
+      pieMode = 'cliente';
+      document.getElementById('pieSwitch').checked = false;
+      UI.updatePieLabels('cliente');
+      document.getElementById('traysDetailPanel').classList.add('hidden');
+      renderDashboard(currentFrom, currentTo);
+      return;
+    }
+
     dashboardMode = 'vendas';
     pieMode = 'produto';
     quantityMode = 'bandejas';
@@ -463,19 +486,22 @@
     UI.updateQuantityLabels('bandejas');
     document.getElementById('traysDetailPanel').classList.remove('hidden');
     renderDashboard(currentFrom, currentTo);
-    document.getElementById('traysDetailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  document.getElementById('traysDetailCard').addEventListener('click', openTraysDetail);
+  document.getElementById('traysDetailCard').addEventListener('click', toggleTraysDetail);
   document.getElementById('traysDetailCard').addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      openTraysDetail();
+      toggleTraysDetail();
     }
   });
   document.getElementById('closeTraysDetail').addEventListener('click', () => {
     traysDetailOpen = false;
+    pieMode = 'cliente';
+    document.getElementById('pieSwitch').checked = false;
+    UI.updatePieLabels('cliente');
     document.getElementById('traysDetailPanel').classList.add('hidden');
+    renderDashboard(currentFrom, currentTo);
   });
 
   ['cancellationModeCard', 'salesModeCard'].forEach(id => {
