@@ -12,6 +12,7 @@
   let dashboardMode = 'vendas'; // 'vendas' | 'cancelamentos'
   let selectedMonth = new Date();
   let activePeriodMode = 'month';
+  let traysDetailOpen = false;
   
   const LINK_DO_GOOGLE_SHEETS = window.SALES_TRACK_CONFIG?.sheetsCsvUrl
     || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv";
@@ -403,6 +404,11 @@
       chartGranularity
     );
     document.getElementById('comparison-period-label').textContent = `Atual × ${chartPreviousLabel}`;
+
+    if (traysDetailOpen) {
+      const pivot = Parser.buildSalesProductPivot(parsedData, from, to, dashboardMode);
+      UI.renderTraysDetail(pivot, document.getElementById('periodSelectorLabel').textContent);
+    }
   }
 
   // ─── INICIALIZACAO ────────────────────────────────────────────
@@ -445,6 +451,32 @@
   });
 
   document.getElementById('salesModeCard').addEventListener('click', () => setDashboardMode('vendas'));
+
+  function openTraysDetail() {
+    dashboardMode = 'vendas';
+    pieMode = 'produto';
+    quantityMode = 'bandejas';
+    traysDetailOpen = true;
+    document.getElementById('pieSwitch').checked = true;
+    document.getElementById('quantitySwitch').checked = false;
+    UI.updatePieLabels('produto');
+    UI.updateQuantityLabels('bandejas');
+    document.getElementById('traysDetailPanel').classList.remove('hidden');
+    renderDashboard(currentFrom, currentTo);
+    document.getElementById('traysDetailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  document.getElementById('traysDetailCard').addEventListener('click', openTraysDetail);
+  document.getElementById('traysDetailCard').addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openTraysDetail();
+    }
+  });
+  document.getElementById('closeTraysDetail').addEventListener('click', () => {
+    traysDetailOpen = false;
+    document.getElementById('traysDetailPanel').classList.add('hidden');
+  });
 
   ['cancellationModeCard', 'salesModeCard'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', event => {

@@ -539,11 +539,13 @@ const Parser = (() => {
     const product = norm(original);
 
     if (product.includes('shiitake')) {
+      if (product.includes('talo')) return 'Shiitake Talo';
       if (product.includes('fatiado')) return 'Shiitake Fatiado';
       if (product.includes('inteiro')) return 'Shiitake Inteiro';
       return 'Shiitake';
     }
     if (product.includes('shimeji')) {
+      if (product.includes('salmao')) return 'Shimeji Salmão';
       if (product.includes('branco')) return 'Shimeji Branco';
       if (product.includes('preto')) return 'Shimeji Preto';
       return 'Shimeji';
@@ -597,5 +599,51 @@ const Parser = (() => {
       .sort((a, b) => b.valor - a.valor);
   }
 
-  return { process, aggregate, aggregateByDay, aggregateByField, aggregateProductsByQuantity, norm, calcPeriodo };
+  function buildSalesProductPivot(parsedData, dateFrom, dateTo, dashboardMode = 'vendas') {
+    let rows = parsedData.rows;
+    if (parsedData.hasDateColumn && dateFrom && dateTo) {
+      const from = parseFilterDate(dateFrom);
+      const to = parseFilterDate(dateTo, true);
+      rows = rows.filter(row => row.date && row.date >= from && row.date <= to);
+    }
+
+    const sales = new Map();
+    const productTotals = new Map();
+    rows.forEach(row => {
+      if (dashboardMode === 'cancelamentos' ? !row.canceled : row.canceled) return;
+      const product = canonicalProductName(row.produto);
+      const quantity = Number(row.quantidadeBandejas) || 0;
+      if (quantity <= 0) return;
+
+      const dateKey = row.date
+        ? `${row.date.getFullYear()}-${String(row.date.getMonth() + 1).padStart(2, '0')}-${String(row.date.getDate()).padStart(2, '0')}`
+        : '';
+      const saleKey = `${row.numeroVenda || 'sem-numero'}|${dateKey}|${row.cliente}`;
+      if (!sales.has(saleKey)) {
+        sales.set(saleKey, {
+          numeroVenda: row.numeroVenda || 'Não informado',
+          date: row.date,
+          cliente: row.cliente,
+          products: {},
+        });
+      }
+      const sale = sales.get(saleKey);
+      sale.products[product] = (sale.products[product] || 0) + quantity;
+      productTotals.set(product, (productTotals.get(product) || 0) + quantity);
+    });
+
+    const columns = [...productTotals.entries()]
+      .filter(([, total]) => total > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+    const pivotRows = [...sales.values()].sort((a, b) => {
+      const dateDifference = (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
+      if (dateDifference) return dateDifference;
+      return String(b.numeroVenda).localeCompare(String(a.numeroVenda), 'pt-BR', { numeric: true });
+    });
+
+    return { columns, rows: pivotRows };
+  }
+
+  return { process, aggregate, aggregateByDay, aggregateByField, aggregateProductsByQuantity, buildSalesProductPivot, norm, calcPeriodo };
 })();

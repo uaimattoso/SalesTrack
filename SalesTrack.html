@@ -88,7 +88,7 @@
                     <div class="kpi-value" id="kpi-toneladas">0,00 t</div>
                     <div class="kpi-variation" id="kpi-toneladas-comparison">Comparando período anterior</div>
                 </div>
-                <div class="kpi-card kpi-trays">
+                <div class="kpi-card kpi-trays kpi-clickable" id="traysDetailCard" role="button" tabindex="0" title="Abrir detalhamento das bandejas vendidas">
                     <div class="kpi-label" id="kpi-bandejas-label">Bandejas Vendidas</div>
                     <div class="kpi-value" id="kpi-bandejas">0</div>
                     <div class="kpi-sub">Conversão padrão em bandejas</div>
@@ -172,6 +172,23 @@
                     </table>
                 </div>
             </section>
+
+            <section class="table-card trays-detail hidden" id="traysDetailPanel" aria-labelledby="trays-detail-title">
+                <div class="chart-header trays-detail-header">
+                    <div>
+                        <h3 id="trays-detail-title">Detalhamento de Bandejas Vendidas</h3>
+                        <span class="chart-badge" id="trays-detail-period">Período selecionado</span>
+                    </div>
+                    <button class="detail-close" id="closeTraysDetail" type="button" aria-label="Fechar detalhamento">×</button>
+                </div>
+                <p class="trays-detail-hint">Cada produto vendido vira uma coluna. Produtos sem movimento no período são ocultados automaticamente.</p>
+                <div class="trays-table-wrap">
+                    <table class="trays-table">
+                        <thead id="traysDetailHead"></thead>
+                        <tbody id="traysDetailBody"></tbody>
+                    </table>
+                </div>
+            </section>
         </main>
 
         <footer class="footer">
@@ -187,9 +204,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="js/theme.js?v=1"></script>
-    <script src="js/parser.js?v=19"></script>
+    <script src="js/parser.js?v=20"></script>
     <script src="js/charts.js?v=15"></script>
-    <script src="js/ui.js?v=19"></script>
-    <script src="js/app.js?v=19"></script>
+    <script src="js/ui.js?v=20"></script>
+    <script src="js/app.js?v=20"></script>
 </body>
 </html>

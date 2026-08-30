@@ -574,6 +574,99 @@ body {
 .kpi-trays .kpi-value { color: var(--purple); }
 .kpi-weight .kpi-value { color: var(--teal); }
 
+.trays-detail {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.trays-detail-header {
+  align-items: flex-start;
+}
+
+.trays-detail-header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detail-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card-hover);
+  color: var(--text-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail-close:hover,
+.detail-close:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--purple);
+}
+
+.trays-detail-hint {
+  margin: 0;
+  padding: 0 20px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.trays-table-wrap {
+  overflow: auto;
+  max-height: 560px;
+  border-top: 1px solid var(--border);
+}
+
+.trays-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.trays-table th,
+.trays-table td {
+  padding: 11px 14px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.trays-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.trays-table tbody tr:hover td {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.trays-table .trays-quantity {
+  color: var(--purple);
+  font-weight: 700;
+  text-align: right;
+}
+
+.trays-table .trays-zero {
+  color: transparent;
+}
+
+.trays-empty {
+  text-align: center !important;
+  color: var(--text-muted);
+  padding: 30px !important;
+}
+
 .kpi-label {
   font-size: 12px;
   font-weight: 500;

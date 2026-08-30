@@ -323,6 +323,52 @@ const UI = (() => {
     lblKg.classList.toggle('active', mode === 'kg');
   }
 
+  function renderTraysDetail(pivot, periodLabel) {
+    const head = document.getElementById('traysDetailHead');
+    const body = document.getElementById('traysDetailBody');
+    const period = document.getElementById('trays-detail-period');
+    if (!head || !body) return;
+    period.textContent = periodLabel || 'Período selecionado';
+
+    const headerRow = document.createElement('tr');
+    ['Número da venda', 'Data da venda', 'Cliente', ...pivot.columns].forEach(label => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      headerRow.appendChild(th);
+    });
+    head.replaceChildren(headerRow);
+    body.replaceChildren();
+
+    if (!pivot.rows.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = Math.max(3, pivot.columns.length + 3);
+      td.className = 'trays-empty';
+      td.textContent = 'Nenhuma bandeja vendida no período selecionado.';
+      tr.appendChild(td);
+      body.appendChild(tr);
+      return;
+    }
+
+    pivot.rows.forEach(sale => {
+      const tr = document.createElement('tr');
+      const dateText = sale.date ? sale.date.toLocaleDateString('pt-BR') : 'Não informada';
+      [sale.numeroVenda, dateText, sale.cliente].forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+      pivot.columns.forEach(product => {
+        const td = document.createElement('td');
+        const value = sale.products[product] || 0;
+        td.className = value > 0 ? 'trays-quantity' : 'trays-zero';
+        td.textContent = value > 0 ? fmtQty(value) : '';
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
   return {
     updateKPIs,
     updateRanking,
@@ -337,5 +383,6 @@ const UI = (() => {
     setupPieSwitch,
     updatePieLabels,
     updateQuantityLabels,
+    renderTraysDetail,
   };
 })();
