@@ -17,6 +17,7 @@
   
   const LINK_DO_GOOGLE_SHEETS = window.SALES_TRACK_CONFIG?.sheetsCsvUrl
     || "https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv";
+  const CONTA_AZUL_SYNC_URL = window.SALES_TRACK_CONFIG?.contaAzulSyncUrl || '';
 
   // ─── UTILITARIO DE DATA ───────────────────────────────────────
 
@@ -349,7 +350,12 @@
     badge.classList.remove('growth', 'decline', 'neutral');
     badge.classList.add('comparison-delta', cssClass);
     badge.title = `Diferença absoluta: ${absoluteDifference}`;
-    badge.innerHTML = `<span class="comparison-delta-icon">${icon}</span>${signal}${percentage.toFixed(1).replace('.', ',')}% vs ${previousLabel}`;
+    badge.innerHTML = `
+      <span class="comparison-delta-icon">${icon}</span>
+      <span class="comparison-delta-copy">
+        <strong>${signal}${percentage.toFixed(1).replace('.', ',')}%</strong>
+        <small>${absoluteDifference} · ${previousLabel}</small>
+      </span>`;
   }
 
   // ─── LEITURA DE DADOS (GOOGLE SHEETS) ─────────────────────────
@@ -358,7 +364,8 @@
     UI.updateSyncStatus('Sincronizando com o Google Drive...', 'carregando');
     
     try {
-      const resposta = await fetch(LINK_DO_GOOGLE_SHEETS);
+      const separator = LINK_DO_GOOGLE_SHEETS.includes('?') ? '&' : '?';
+      const resposta = await fetch(`${LINK_DO_GOOGLE_SHEETS}${separator}_=${Date.now()}`, { cache: 'no-store' });
       if (!resposta.ok) throw new Error("Nao foi possivel acessar a planilha.");
 
       // O Google publica o CSV em UTF-8. A leitura como texto preserva
@@ -397,9 +404,45 @@
 
       renderDashboard();
       UI.updateSyncStatus('Dados atualizados em tempo real!', 'sucesso');
+      return true;
     } catch (err) {
       console.error(err);
       UI.updateSyncStatus('Falha ao sincronizar: ' + err.message, 'erro');
+      return false;
+    }
+  }
+
+  async function syncContaAzulAndRefresh() {
+    const button = document.getElementById('newFileBtn');
+    if (!CONTA_AZUL_SYNC_URL || button.disabled) return;
+
+    button.disabled = true;
+    button.classList.add('is-syncing');
+    button.setAttribute('aria-busy', 'true');
+    UI.updateSyncStatus('Buscando dados diretamente no Conta Azul...', 'carregando');
+
+    try {
+      const separator = CONTA_AZUL_SYNC_URL.includes('?') ? '&' : '?';
+      const response = await fetch(`${CONTA_AZUL_SYNC_URL}${separator}action=sync&_=${Date.now()}`, {
+        method: 'GET',
+        cache: 'no-store',
+        redirect: 'follow',
+      });
+      if (!response.ok) throw new Error('A ponte com o Conta Azul não respondeu.');
+      const result = await response.json();
+      if (!result.ok) throw new Error(result.message || 'Não foi possível atualizar o Conta Azul.');
+
+      UI.updateSyncStatus(`${result.sales || 0} vendas recebidas do Conta Azul. Atualizando painel...`, 'carregando');
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      const refreshed = await fetchData();
+      if (!refreshed) throw new Error('A planilha foi atualizada, mas o painel não conseguiu recarregar.');
+    } catch (error) {
+      console.error(error);
+      UI.updateSyncStatus('Falha ao atualizar pelo Conta Azul: ' + error.message, 'erro');
+    } finally {
+      button.disabled = false;
+      button.classList.remove('is-syncing');
+      button.removeAttribute('aria-busy');
     }
   }
 
@@ -441,7 +484,11 @@
     } else if (kgDetailOpen) {
       document.getElementById('kpi-total-label').textContent = `Vendas de Shiitake do Período (${agg.totalVendas})`;
       document.getElementById('kpi-toneladas-label').textContent = 'Shiitake em Toneladas';
+      const toneladasComposition = document.getElementById('kpi-toneladas-composition');
+      toneladasComposition.textContent = `Inteiro: ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(agg.totalKgShiitakeInteiro / 1000)} t | Fatiado: ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(agg.totalKgShiitakeFatiado / 1000)} t`;
+      toneladasComposition.classList.remove('hidden');
       document.getElementById('kpi-bandejas-label').textContent = 'Bandejas de Shiitake';
+      document.getElementById('kpi-bandejas-composition').textContent = `Inteiro: ${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(agg.totalBandejasShiitakeInteiro)} | Fatiado: ${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(agg.totalBandejasShiitakeFatiado)}`;
       document.getElementById('kpi-kg-label').textContent = 'Shiitake';
       document.getElementById('kpi-cancel-label').textContent = `Cancelamentos de Shiitake (${agg.totalCancelamentos})`;
       document.getElementById('kpi-top-label').textContent = 'Melhor Vendedor de Shiitake';
@@ -665,9 +712,7 @@
     });
   });
 
-  document.getElementById('newFileBtn').addEventListener('click', () => {
-    fetchData(); // Agora ele funciona como botao Atualizar
-  });
+  document.getElementById('newFileBtn').addEventListener('click', syncContaAzulAndRefresh);
 
   document.getElementById('periodDropdownToggle').addEventListener('click', () => {
     const dropdown = document.getElementById('periodDropdown');

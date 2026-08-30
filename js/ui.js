@@ -63,7 +63,11 @@ const UI = (() => {
     document.getElementById('kpi-total-label').textContent   =
       `${cancellationMode ? 'Cancelamentos' : 'Vendas'} do Período (${agg.totalVendas})`;
     document.getElementById('kpi-toneladas').textContent     = fmtQty(agg.totalKg / 1000, 2) + ' t';
+    const toneladasComposition = document.getElementById('kpi-toneladas-composition');
+    toneladasComposition.textContent = '';
+    toneladasComposition.classList.add('hidden');
     document.getElementById('kpi-bandejas').textContent      = fmtQty(agg.totalBandejas);
+    document.getElementById('kpi-bandejas-composition').textContent = 'Conversão padrão em bandejas';
     document.getElementById('kpi-kg').textContent            =
       `${fmtQty(agg.totalBandejasShiitake)} bdj · ${fmtQty(agg.totalKgShiitake, 2)} kg`;
     document.getElementById('kpi-kg-composition').textContent =

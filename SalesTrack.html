@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=36">
+    <link rel="stylesheet" href="css/style.css?v=44">
 </head>
 <body>
 
@@ -86,12 +86,13 @@
                 <div class="kpi-card">
                     <div class="kpi-label" id="kpi-toneladas-label">Venda Total em Toneladas</div>
                     <div class="kpi-value" id="kpi-toneladas">0,00 t</div>
+                    <div class="kpi-sub hidden" id="kpi-toneladas-composition"></div>
                     <div class="kpi-variation" id="kpi-toneladas-comparison">Comparando período anterior</div>
                 </div>
                 <div class="kpi-card kpi-trays kpi-clickable" id="traysDetailCard" role="button" tabindex="0" title="Abrir detalhamento das bandejas vendidas">
                     <div class="kpi-label" id="kpi-bandejas-label">Bandejas Vendidas</div>
                     <div class="kpi-value" id="kpi-bandejas">0</div>
-                    <div class="kpi-sub">Conversão padrão em bandejas</div>
+                    <div class="kpi-sub" id="kpi-bandejas-composition">Conversão padrão em bandejas</div>
                     <div class="kpi-variation" id="kpi-bandejas-variation"></div>
                 </div>
                 <div class="kpi-card kpi-weight kpi-clickable" id="kgDetailCard" role="button" tabindex="0" title="Abrir análise de Kg de Shiitake vendidos">
@@ -198,15 +199,16 @@
 
     <script>
         window.SALES_TRACK_CONFIG = {
-            sheetsCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv'
+            sheetsCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv',
+            contaAzulSyncUrl: 'https://script.google.com/macros/s/AKfycbwfeytugh9Q8tmMSgI6OCGSlY-oe_GjRP1ndBnckLF8yD1zrPFMheEy8GygTEfHM9rV/exec'
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="js/theme.js?v=1"></script>
-    <script src="js/parser.js?v=40"></script>
+    <script src="js/parser.js?v=46"></script>
     <script src="js/charts.js?v=31"></script>
-    <script src="js/ui.js?v=41"></script>
-    <script src="js/app.js?v=42"></script>
+    <script src="js/ui.js?v=45"></script>
+    <script src="js/app.js?v=47"></script>
 </body>
 </html>

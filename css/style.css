@@ -491,6 +491,19 @@ body {
   border-color: var(--text-dim);
 }
 
+.btn-new-file:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.btn-new-file.is-syncing svg {
+  animation: sync-spin 0.9s linear infinite;
+}
+
+@keyframes sync-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ─── MAIN ───────────────────────────────────── */
 .main {
   flex: 1;
@@ -818,7 +831,36 @@ body {
 .chart-badge.comparison-delta {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.comparison-delta-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
+.comparison-delta-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.comparison-delta-copy strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.comparison-delta-copy small {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.82;
 }
 
 .chart-badge.comparison-delta.growth {

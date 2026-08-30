@@ -690,9 +690,11 @@ const Parser = (() => {
       .filter(([, total]) => total > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([name]) => name);
-    const pivotRows = [...sales.values()].sort((a, b) =>
-      String(a.numeroVenda).localeCompare(String(b.numeroVenda), 'pt-BR', { numeric: true })
-    );
+    const pivotRows = [...sales.values()].sort((a, b) => {
+      const dateDifference = (a.date?.getTime() || 0) - (b.date?.getTime() || 0);
+      if (dateDifference) return dateDifference;
+      return String(a.numeroVenda).localeCompare(String(b.numeroVenda), 'pt-BR', { numeric: true });
+    });
 
     const totalValorLiquido = pivotRows.reduce((sum, sale) => sum + sale.valorLiquido, 0);
     const totalBandejas = pivotRows.reduce((sum, sale) => sum + sale.totalBandejas, 0);
