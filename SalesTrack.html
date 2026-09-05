@@ -206,31 +206,40 @@
                 </div>
             </section>
 
-            <section class="kpi-grid socios-kpi-grid">
-                <div class="kpi-card kpi-primary">
-                    <div class="kpi-label">Total aplicado</div>
-                    <div class="kpi-value" id="sociosTotalAplicado">R$ 0,00</div>
-                    <div class="kpi-sub" id="sociosTotalAplicadoSub">0 acionistas</div>
-                </div>
-                <div class="kpi-card kpi-gold">
-                    <div class="kpi-label">Total devolvido</div>
-                    <div class="kpi-value" id="sociosTotalDevolvido">R$ 0,00</div>
-                    <div class="kpi-sub">Valores já restituídos</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-label">Saldo líquido</div>
+            <section class="socios-kpi-grid">
+                <article class="kpi-card socios-summary-card kpi-primary">
+                    <div class="kpi-label">Posição geral</div>
                     <div class="kpi-value" id="sociosSaldoLiquido">R$ 0,00</div>
-                    <div class="kpi-sub">Capital ainda aplicado</div>
-                </div>
+                    <div class="socios-kpi-breakdown"><span>Aplicado <strong id="sociosTotalAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosTotalDevolvido">R$ 0,00</strong></span></div>
+                    <div class="kpi-sub" id="sociosTotalAplicadoSub">0 acionistas</div>
+                </article>
+                <article class="kpi-card socios-summary-card kpi-gold">
+                    <div class="kpi-label">Anderson Simões</div>
+                    <div class="kpi-value" id="sociosAndersonSaldo">R$ 0,00</div>
+                    <div class="socios-kpi-breakdown"><span>Aplicado <strong id="sociosAndersonAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosAndersonDevolvido">R$ 0,00</strong></span></div>
+                    <div class="kpi-sub">Saldo líquido atual</div>
+                </article>
+                <article class="kpi-card socios-summary-card">
+                    <div class="kpi-label">Maior investidor</div>
+                    <div class="kpi-value kpi-name" id="sociosMaiorNome">—</div>
+                    <div class="socios-kpi-breakdown"><span>Líquido <strong id="sociosMaiorSaldo">R$ 0,00</strong></span><span>Aplicado <strong id="sociosMaiorAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosMaiorDevolvido">R$ 0,00</strong></span></div>
+                    <div class="kpi-sub">Maior saldo ainda aplicado</div>
+                </article>
+                <article class="kpi-card socios-summary-card">
+                    <div class="kpi-label" id="sociosMesLabel">Movimentação do mês</div>
+                    <div class="kpi-value" id="sociosMesLiquido">R$ 0,00</div>
+                    <div class="socios-kpi-breakdown"><span>Aplicado <strong id="sociosMesAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosMesDevolvido">R$ 0,00</strong></span></div>
+                    <div class="kpi-sub">Resultado líquido mensal</div>
+                </article>
             </section>
 
             <section class="socios-dashboard-grid">
                 <article class="chart-card socios-chart-card">
                     <div class="chart-header">
-                        <h3>Aplicado × devolvido por acionista</h3>
+                        <h3>Movimentação mensal dos sócios</h3>
                         <div class="socios-chart-controls" role="group" aria-label="Métrica do gráfico">
-                            <button class="metric-button active" type="button" data-socios-metric="all">Comparar</button>
-                            <button class="metric-button" type="button" data-socios-metric="saldo">Saldo</button>
+                            <button class="metric-button active" type="button" data-socios-metric="all">Todos</button>
+                            <button class="metric-button" type="button" data-socios-metric="anderson">Anderson</button>
                         </div>
                     </div>
                     <div class="chart-body socios-chart-body"><canvas id="sociosChart"></canvas></div>
@@ -315,6 +324,6 @@
     <script src="js/charts.js?v=31"></script>
     <script src="js/ui.js?v=45"></script>
     <script src="js/app.js?v=47"></script>
-    <script src="js/company-dashboards.js?v=3"></script>
+    <script src="js/company-dashboards.js?v=4"></script>
 </body>
 </html>
