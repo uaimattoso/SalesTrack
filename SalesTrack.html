@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=44">
+    <link rel="stylesheet" href="css/style.css?v=45">
 </head>
 <body>
 
@@ -30,11 +30,12 @@
                     <span id="totalRows" class="file-rows" style="margin-top: 2px;">0 registros</span>
                 </div>
             </div>
-            <div class="company-title-banner" aria-label="Fazenda Eldorado">
+            <button id="companyMenuToggle" class="company-title-banner" type="button" aria-label="Abrir áreas da Fazenda Eldorado" aria-haspopup="dialog" aria-expanded="false">
                 <img class="banner-logo" src="assets/branding/fazenda-eldorado-logo.png" alt="">
                 <span class="company-title">Fazenda <strong>Eldorado</strong></span>
                 <img class="banner-logo" src="assets/branding/fazenda-eldorado-logo.png" alt="">
-            </div>
+                <span class="company-menu-chevron" aria-hidden="true">⌄</span>
+            </button>
             <div class="header-right">
                 <button id="themeToggle" class="theme-toggle" type="button" aria-label="Ativar tema claro" aria-pressed="false">
                     <span class="theme-icon" aria-hidden="true">☾</span>
@@ -75,7 +76,7 @@
             </div>
         </header>
 
-        <main class="main">
+        <main id="salestrack-view" class="main dashboard-view active-view" data-dashboard-view="salestrack">
             <section class="kpi-grid">
                 <div class="kpi-card kpi-primary kpi-clickable" id="salesModeCard" role="button" tabindex="0" title="Mostrar vendas válidas">
                     <div class="kpi-label" id="kpi-total-label">Vendas do Período (0)</div>
@@ -192,14 +193,118 @@
             </section>
         </main>
 
+        <main id="socios-view" class="main dashboard-view hidden" data-dashboard-view="socios" aria-labelledby="socios-title">
+            <section class="section-heading">
+                <div>
+                    <span class="section-eyebrow">Fazenda Eldorado</span>
+                    <h1 id="socios-title">Dashboard de Sócios</h1>
+                    <p>Aportes e devoluções pagos por sócio, conforme a base de Empréstimos e AFAC.</p>
+                </div>
+                <div class="socios-data-actions">
+                    <span id="sociosStatus" class="view-status" role="status" aria-live="polite">Carregando dados…</span>
+                    <button id="sociosRefresh" class="metric-button" type="button">Atualizar dados</button>
+                </div>
+            </section>
+
+            <section class="kpi-grid socios-kpi-grid">
+                <div class="kpi-card kpi-primary">
+                    <div class="kpi-label">Total aplicado</div>
+                    <div class="kpi-value" id="sociosTotalAplicado">R$ 0,00</div>
+                    <div class="kpi-sub" id="sociosTotalAplicadoSub">0 acionistas</div>
+                </div>
+                <div class="kpi-card kpi-gold">
+                    <div class="kpi-label">Total devolvido</div>
+                    <div class="kpi-value" id="sociosTotalDevolvido">R$ 0,00</div>
+                    <div class="kpi-sub">Valores já restituídos</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Saldo líquido</div>
+                    <div class="kpi-value" id="sociosSaldoLiquido">R$ 0,00</div>
+                    <div class="kpi-sub">Capital ainda aplicado</div>
+                </div>
+            </section>
+
+            <section class="socios-dashboard-grid">
+                <article class="chart-card socios-chart-card">
+                    <div class="chart-header">
+                        <h3>Aplicado × devolvido por acionista</h3>
+                        <div class="socios-chart-controls" role="group" aria-label="Métrica do gráfico">
+                            <button class="metric-button active" type="button" data-socios-metric="all">Comparar</button>
+                            <button class="metric-button" type="button" data-socios-metric="saldo">Saldo</button>
+                        </div>
+                    </div>
+                    <div class="chart-body socios-chart-body"><canvas id="sociosChart"></canvas></div>
+                </article>
+
+                <article class="table-card socios-table-card">
+                    <div class="chart-header">
+                        <h3>Posição dos acionistas</h3>
+                        <input id="sociosSearch" class="socios-search" type="search" placeholder="Buscar acionista" aria-label="Buscar acionista">
+                    </div>
+                    <div class="socios-table-wrap">
+                        <table class="socios-table">
+                            <thead><tr><th>Acionista</th><th>Aplicado</th><th>Devolvido</th><th>Saldo</th></tr></thead>
+                            <tbody id="sociosTableBody"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </main>
+
+        <main id="construction-view" class="main dashboard-view hidden" data-dashboard-view="construction" aria-live="polite">
+            <section class="construction-card">
+                <div class="construction-symbols" aria-hidden="true"><span>⚠</span><span>🚧</span><span>🏗️</span></div>
+                <span class="construction-badge">Área em desenvolvimento</span>
+                <h1 id="constructionTitle">Em construção</h1>
+                <p id="constructionDescription">Este dashboard está sendo preparado.</p>
+                <div class="construction-stripe" aria-hidden="true"></div>
+            </section>
+        </main>
+
         <footer class="footer">
             SalesTrack &mdash; Dashboard de Vendas &nbsp;|&nbsp; Gerado em <span id="footerDate"></span>
         </footer>
     </div>
 
+    <div id="companyMenuModal" class="company-menu-modal hidden" role="dialog" aria-modal="true" aria-labelledby="companyMenuTitle">
+        <button class="company-menu-backdrop" type="button" data-close-company-menu aria-label="Fechar menu"></button>
+        <section class="company-menu-panel">
+            <div class="company-menu-header">
+                <div>
+                    <span class="section-eyebrow">Fazenda Eldorado</span>
+                    <h2 id="companyMenuTitle">Escolha um dashboard</h2>
+                </div>
+                <button class="company-menu-close" type="button" data-close-company-menu aria-label="Fechar">×</button>
+            </div>
+            <div class="company-options">
+                <button class="company-option" type="button" data-view="socios">
+                    <span class="company-option-icon" aria-hidden="true">👥</span>
+                    <span><strong>Sócios</strong><small>Aportes e devoluções</small></span>
+                    <span class="company-option-arrow" aria-hidden="true">→</span>
+                </button>
+                <button class="company-option" type="button" data-view="dre">
+                    <span class="company-option-icon warning" aria-hidden="true">⚠</span>
+                    <span><strong>DRE</strong><small>Em construção 🚧</small></span>
+                    <span class="company-option-arrow" aria-hidden="true">→</span>
+                </button>
+                <button class="company-option" type="button" data-view="fluxo">
+                    <span class="company-option-icon warning" aria-hidden="true">🏗️</span>
+                    <span><strong>Fluxo de Caixa</strong><small>Em construção 🚧</small></span>
+                    <span class="company-option-arrow" aria-hidden="true">→</span>
+                </button>
+                <button class="company-option selected" type="button" data-view="salestrack">
+                    <span class="company-option-icon" aria-hidden="true">↗</span>
+                    <span><strong>SalesTrack</strong><small>Vendas e indicadores</small></span>
+                    <span class="company-option-arrow" aria-hidden="true">→</span>
+                </button>
+            </div>
+        </section>
+    </div>
+
     <script>
         window.SALES_TRACK_CONFIG = {
             sheetsCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv',
+            sociosCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=703062554&single=true&output=csv',
             contaAzulSyncUrl: 'https://script.google.com/macros/s/AKfycbwfeytugh9Q8tmMSgI6OCGSlY-oe_GjRP1ndBnckLF8yD1zrPFMheEy8GygTEfHM9rV/exec'
         };
     </script>
@@ -210,5 +315,6 @@
     <script src="js/charts.js?v=31"></script>
     <script src="js/ui.js?v=45"></script>
     <script src="js/app.js?v=47"></script>
+    <script src="js/company-dashboards.js?v=3"></script>
 </body>
 </html>
