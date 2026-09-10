@@ -103,6 +103,14 @@
     });
   }
 
+  function normalizeName(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  }
+
+  function isPca(value) {
+    return /\bPCA\b|GRUPO PERFORMANCE CONSULTORIA/.test(normalizeName(value));
+  }
+
   async function loadSocios() {
     if (sociosLoading) return;
     sociosLoading = true;
@@ -128,12 +136,13 @@
       matrix.slice(headerIndex + 1).forEach(function (row) {
         const date = parseBrDate(row[columns[0]]);
         const nome = String(row[columns[1]] || '').trim();
-        if (!date || !nome || String(row[columns[4]] || '').trim() !== 'Pago') return;
+        if (!date || !nome || isPca(nome) || String(row[columns[4]] || '').trim() !== 'Pago') return;
         const aplicado = toNumber(row[columns[2]]);
         const devolvido = toNumber(row[columns[3]]);
-        const partner = partners.get(nome) || { nome: nome, aplicado: 0, devolvido: 0, saldo: 0 };
+        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
         partner.aplicado += Math.round(aplicado * 100);
         partner.devolvido += Math.round(devolvido * 100);
+        if (aplicado > 0 && (!partner.ultimoAporte || date > partner.ultimoAporte)) partner.ultimoAporte = date;
         partners.set(nome, partner);
         transactions.push({ date: date, nome: nome, aplicado: aplicado, devolvido: devolvido });
       });
@@ -148,6 +157,7 @@
       sociosTransactions = transactions;
       sociosLoaded = true;
       status.textContent = 'Planilha consultada às ' + new Date().toLocaleTimeString('pt-BR');
+      renderSociosControls();
       renderSocios();
     } catch (error) {
       status.textContent = sociosLoaded ? 'Falha ao atualizar — exibindo a última consulta' : 'Não foi possível consultar a planilha';
@@ -156,13 +166,23 @@
         ['sociosTotalAplicado', 'sociosTotalDevolvido', 'sociosSaldoLiquido', 'sociosTotalAplicadoSub'].forEach(function (id) {
           document.getElementById(id).textContent = '—';
         });
-        document.getElementById('sociosTableBody').innerHTML = '<tr><td colspan="4">A base de sócios está indisponível. Confira o acesso à planilha e tente atualizar novamente.</td></tr>';
+        document.getElementById('sociosTableBody').innerHTML = '<tr><td colspan="5">A base de sócios está indisponível. Confira o acesso à planilha e tente atualizar novamente.</td></tr>';
       }
     } finally {
       clearTimeout(timeout);
       sociosLoading = false;
       refresh.disabled = false;
     }
+  }
+
+  function renderSociosControls() {
+    const controls = document.querySelector('.socios-chart-controls');
+    const available = sociosRows.map(function (row) { return row.nome; });
+    if (sociosMetric !== 'all' && !available.includes(sociosMetric)) sociosMetric = 'all';
+    controls.innerHTML = ['<button class="metric-button' + (sociosMetric === 'all' ? ' active' : '') + '" type="button" data-socios-metric="all">Todos</button>']
+      .concat(available.map(function (name) {
+        return '<button class="metric-button' + (sociosMetric === name ? ' active' : '') + '" type="button" data-socios-metric="' + escapeHtml(name) + '">' + escapeHtml(name) + '</button>';
+      })).join('');
   }
 
   function renderSocios() {
@@ -200,13 +220,14 @@
     const query = document.getElementById('sociosSearch').value.trim().toLocaleLowerCase('pt-BR');
     const filtered = sociosRows.filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); });
     document.getElementById('sociosTableBody').innerHTML = filtered.map(function (row) {
-      return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
-    }).join('') || '<tr><td colspan="4">Nenhum acionista encontrado.</td></tr>';
+      const ultimoAporte = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
+      return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimoAporte + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5">Nenhum acionista encontrado.</td></tr>';
   }
 
   function renderSociosChart() {
     const isLight = document.documentElement.dataset.theme === 'light';
-    const source = sociosMetric === 'anderson' ? sociosTransactions.filter(function (item) { return item.nome === 'Anderson Simões'; }) : sociosTransactions;
+    const source = sociosMetric === 'all' ? sociosTransactions : sociosTransactions.filter(function (item) { return item.nome === sociosMetric; });
     const months = new Map();
     source.forEach(function (item) {
       const key = item.date.getFullYear() + '-' + String(item.date.getMonth() + 1).padStart(2, '0');
@@ -244,12 +265,12 @@
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeMenu(); });
   document.getElementById('sociosSearch').addEventListener('input', renderSociosTable);
   document.getElementById('sociosRefresh').addEventListener('click', loadSocios);
-  document.querySelectorAll('[data-socios-metric]').forEach(function (button) {
-    button.addEventListener('click', function () {
-      sociosMetric = button.dataset.sociosMetric;
-      document.querySelectorAll('[data-socios-metric]').forEach(function (item) { item.classList.toggle('active', item === button); });
-      renderSociosChart();
-    });
+  document.querySelector('.socios-chart-controls').addEventListener('click', function (event) {
+    const button = event.target.closest('[data-socios-metric]');
+    if (!button) return;
+    sociosMetric = button.dataset.sociosMetric;
+    document.querySelectorAll('[data-socios-metric]').forEach(function (item) { item.classList.toggle('active', item === button); });
+    renderSociosChart();
   });
 
   new MutationObserver(function () { if (sociosLoaded && currentView === 'socios') renderSociosChart(); })
