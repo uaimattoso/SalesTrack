@@ -112,7 +112,22 @@
   }
 
   function interpretedPartnerName(value) {
-    return /\bDURCESIO MELLO\b/.test(normalizeName(value)) ? 'Jet Star' : String(value || '').trim();
+    return String(value || '').trim();
+  }
+
+  const FORMAL_SHAREHOLDERS = [
+    'Anderson Simões',
+    'José Carlos',
+    'José Domingos',
+    'Luiz Eduardo',
+    'Raphael Gindre',
+    'Durcesio Mello',
+    'Jet Star'
+  ];
+
+  function formalShareholderName(value) {
+    const normalized = normalizeName(interpretedPartnerName(value));
+    return FORMAL_SHAREHOLDERS.find(function (name) { return normalizeName(name) === normalized; }) || null;
   }
 
   async function loadSocios() {
@@ -139,7 +154,7 @@
       const transactions = [];
       matrix.slice(headerIndex + 1).forEach(function (row) {
         const date = parseBrDate(row[columns[0]]);
-        const nome = interpretedPartnerName(row[columns[1]]);
+        const nome = formalShareholderName(row[columns[1]]);
         if (!date || !nome || isPca(nome) || String(row[columns[4]] || '').trim() !== 'Pago') return;
         const aplicado = toNumber(row[columns[2]]);
         const devolvido = toNumber(row[columns[3]]);
@@ -150,12 +165,13 @@
         partners.set(nome, partner);
         transactions.push({ date: date, nome: nome, aplicado: aplicado, devolvido: devolvido });
       });
-      const rows = Array.from(partners.values()).map(function (partner) {
+      const rows = FORMAL_SHAREHOLDERS.map(function (nome) {
+        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
         partner.saldo = (partner.aplicado - partner.devolvido) / 100;
         partner.aplicado /= 100;
         partner.devolvido /= 100;
         return partner;
-      }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+      });
       if (!rows.length) throw new Error('Nenhum dado disponível');
       sociosRows = rows;
       sociosTransactions = transactions;
