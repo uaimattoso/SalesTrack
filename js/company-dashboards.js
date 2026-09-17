@@ -111,6 +111,10 @@
     return /\bPCA\b|GRUPO PERFORMANCE CONSULTORIA/.test(normalizeName(value));
   }
 
+  function interpretedPartnerName(value) {
+    return /\bDURCESIO MELLO\b/.test(normalizeName(value)) ? 'Jet Star' : String(value || '').trim();
+  }
+
   async function loadSocios() {
     if (sociosLoading) return;
     sociosLoading = true;
@@ -135,7 +139,7 @@
       const transactions = [];
       matrix.slice(headerIndex + 1).forEach(function (row) {
         const date = parseBrDate(row[columns[0]]);
-        const nome = String(row[columns[1]] || '').trim();
+        const nome = interpretedPartnerName(row[columns[1]]);
         if (!date || !nome || isPca(nome) || String(row[columns[4]] || '').trim() !== 'Pago') return;
         const aplicado = toNumber(row[columns[2]]);
         const devolvido = toNumber(row[columns[3]]);
