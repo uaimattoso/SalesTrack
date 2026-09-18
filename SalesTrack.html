@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=46">
+    <link rel="stylesheet" href="css/style.css?v=47">
 </head>
 <body>
 
@@ -38,6 +38,10 @@
                 <span class="company-menu-chevron" aria-hidden="true">⌄</span>
             </button>
             <div class="header-right">
+                <div class="socios-header-actions">
+                    <span id="sociosStatus" class="view-status" role="status" aria-live="polite">Carregando dados…</span>
+                    <button id="sociosRefresh" class="metric-button" type="button">Atualizar dados</button>
+                </div>
                 <button id="themeToggle" class="theme-toggle" type="button" aria-label="Ativar tema claro" aria-pressed="false">
                     <span class="theme-icon" aria-hidden="true">☾</span>
                     <span class="theme-label">Escuro</span>
@@ -195,13 +199,6 @@
         </main>
 
         <main id="socios-view" class="main dashboard-view hidden" data-dashboard-view="socios" aria-labelledby="socios-title">
-            <div class="socios-toolbar">
-                <div class="socios-data-actions">
-                    <span id="sociosStatus" class="view-status" role="status" aria-live="polite">Carregando dados…</span>
-                    <button id="sociosRefresh" class="metric-button" type="button">Atualizar dados</button>
-                </div>
-            </div>
-
             <section class="socios-kpi-grid">
                 <article class="kpi-card socios-summary-card kpi-primary">
                     <div class="kpi-label">Posição geral</div>
