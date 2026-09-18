@@ -220,12 +220,6 @@
                     <div class="kpi-sub">Saldo líquido atual</div>
                 </article>
                 <article class="kpi-card socios-summary-card">
-                    <div class="kpi-label">Maior investidor</div>
-                    <div class="kpi-value kpi-name" id="sociosMaiorNome">—</div>
-                    <div class="socios-kpi-breakdown"><span>Líquido <strong id="sociosMaiorSaldo">R$ 0,00</strong></span><span>Aplicado <strong id="sociosMaiorAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosMaiorDevolvido">R$ 0,00</strong></span></div>
-                    <div class="kpi-sub">Maior saldo ainda aplicado</div>
-                </article>
-                <article class="kpi-card socios-summary-card">
                     <div class="kpi-label" id="sociosMesLabel">Movimentação do mês</div>
                     <div class="kpi-value" id="sociosMesLiquido">R$ 0,00</div>
                     <div class="socios-kpi-breakdown"><span>Aplicado <strong id="sociosMesAplicado">R$ 0,00</strong></span><span>Devolvido <strong id="sociosMesDevolvido">R$ 0,00</strong></span></div>
@@ -256,6 +250,18 @@
                         </table>
                     </div>
                 </article>
+            </section>
+
+            <section class="table-card socios-detail-card">
+                <div class="chart-header">
+                    <h3>Movimentações dos sócios</h3>
+                </div>
+                <div class="socios-detail-table-wrap">
+                    <table class="socios-table socios-detail-table">
+                        <thead><tr><th>Data prevista</th><th>Sócio/Acionista</th><th>Movimento</th><th>Categoria</th><th>Cliente/Fornecedor</th><th>Conta financeira</th><th>Valor aplicado</th><th>Valor devolvido</th></tr></thead>
+                        <tbody id="sociosDetailTableBody"></tbody>
+                    </table>
+                </div>
             </section>
         </main>
 
@@ -313,16 +319,17 @@
         window.SALES_TRACK_CONFIG = {
             sheetsCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=0&single=true&output=csv',
             sociosCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiztbelxpXGX7JojQAWAEbs2nigwXpty7wG7Nuk80qlb0LLRPn36YEQeud30Bv0Eteb37ZLTnFZ5BX/pub?gid=703062554&single=true&output=csv',
+            canceladosDataUrl: 'https://script.google.com/macros/s/AKfycbwfeytugh9Q8tmMSgI6OCGSlY-oe_GjRP1ndBnckLF8yD1zrPFMheEy8GygTEfHM9rV/exec?action=cancelados',
             contaAzulSyncUrl: 'https://script.google.com/macros/s/AKfycbwfeytugh9Q8tmMSgI6OCGSlY-oe_GjRP1ndBnckLF8yD1zrPFMheEy8GygTEfHM9rV/exec'
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="js/theme.js?v=1"></script>
-    <script src="js/parser.js?v=46"></script>
+    <script src="js/parser.js?v=47"></script>
     <script src="js/charts.js?v=31"></script>
     <script src="js/ui.js?v=45"></script>
-    <script src="js/app.js?v=47"></script>
+    <script src="js/app.js?v=48"></script>
     <script src="js/company-dashboards.js?v=5"></script>
 </body>
 </html>

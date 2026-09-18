@@ -144,7 +144,7 @@
       const response = await fetch(window.SALES_TRACK_CONFIG.sociosCsvUrl + '&_=' + Date.now(), { cache: 'no-store', signal: controller.signal });
       if (!response.ok) throw new Error('Falha ao consultar a planilha');
       const matrix = parseCsv(await response.text());
-      const headers = ['Data prevista', 'Sócio/Acionista', 'Valor aplicado', 'Valor devolvido', 'Situação'];
+      const headers = ['Data prevista', 'Sócio/Acionista', 'Movimento', 'Categoria', 'Cliente/Fornecedor', 'Conta financeira', 'Valor aplicado', 'Valor devolvido', 'Situação'];
       const headerIndex = matrix.findIndex(function (row) {
         return headers.every(function (name) { return row.includes(name); });
       });
@@ -155,15 +155,24 @@
       matrix.slice(headerIndex + 1).forEach(function (row) {
         const date = parseBrDate(row[columns[0]]);
         const nome = formalShareholderName(row[columns[1]]);
-        if (!date || !nome || isPca(nome) || String(row[columns[4]] || '').trim() !== 'Pago') return;
-        const aplicado = toNumber(row[columns[2]]);
-        const devolvido = toNumber(row[columns[3]]);
+        if (!date || !nome || isPca(nome) || String(row[columns[8]] || '').trim() !== 'Pago') return;
+        const aplicado = toNumber(row[columns[6]]);
+        const devolvido = toNumber(row[columns[7]]);
         const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
         partner.aplicado += Math.round(aplicado * 100);
         partner.devolvido += Math.round(devolvido * 100);
         if (aplicado > 0 && (!partner.ultimoAporte || date > partner.ultimoAporte)) partner.ultimoAporte = date;
         partners.set(nome, partner);
-        transactions.push({ date: date, nome: nome, aplicado: aplicado, devolvido: devolvido });
+        transactions.push({
+          date: date,
+          nome: nome,
+          movimento: String(row[columns[2]] || '').trim(),
+          categoria: String(row[columns[3]] || '').trim(),
+          clienteFornecedor: String(row[columns[4]] || '').trim(),
+          contaFinanceira: String(row[columns[5]] || '').trim(),
+          aplicado: aplicado,
+          devolvido: devolvido
+        });
       });
       const rows = FORMAL_SHAREHOLDERS.map(function (nome) {
         const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
@@ -220,11 +229,6 @@
     document.getElementById('sociosAndersonSaldo').textContent = money(anderson.saldo);
     document.getElementById('sociosAndersonAplicado').textContent = money(anderson.aplicado);
     document.getElementById('sociosAndersonDevolvido').textContent = money(anderson.devolvido);
-    const largest = sociosRows.reduce(function (best, row) { return !best || row.saldo > best.saldo ? row : best; }, null);
-    document.getElementById('sociosMaiorNome').textContent = largest ? largest.nome : '—';
-    document.getElementById('sociosMaiorSaldo').textContent = money(largest ? largest.saldo : 0);
-    document.getElementById('sociosMaiorAplicado').textContent = money(largest ? largest.aplicado : 0);
-    document.getElementById('sociosMaiorDevolvido').textContent = money(largest ? largest.devolvido : 0);
     const latestDate = sociosTransactions.reduce(function (latest, item) { return !latest || item.date > latest ? item.date : latest; }, null);
     const monthRows = latestDate ? sociosTransactions.filter(function (item) { return item.date.getFullYear() === latestDate.getFullYear() && item.date.getMonth() === latestDate.getMonth(); }) : [];
     const month = monthRows.reduce(function (sum, item) { sum.aplicado += item.aplicado; sum.devolvido += item.devolvido; return sum; }, { aplicado: 0, devolvido: 0 });
@@ -233,6 +237,7 @@
     document.getElementById('sociosMesAplicado').textContent = money(month.aplicado);
     document.getElementById('sociosMesDevolvido').textContent = money(month.devolvido);
     renderSociosTable();
+    renderSociosDetailTable();
     renderSociosChart();
   }
 
@@ -256,6 +261,12 @@
       const ultimoAporte = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
       return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimoAporte + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
     }).join('') || '<tr><td colspan="5">Nenhum acionista encontrado.</td></tr>';
+  }
+
+  function renderSociosDetailTable() {
+    document.getElementById('sociosDetailTableBody').innerHTML = sociosTransactions.map(function (row) {
+      return '<tr><td>' + row.date.toLocaleDateString('pt-BR') + '</td><td>' + escapeHtml(row.nome) + '</td><td>' + escapeHtml(row.movimento || '—') + '</td><td>' + escapeHtml(row.categoria || '—') + '</td><td>' + escapeHtml(row.clienteFornecedor || '—') + '</td><td>' + escapeHtml(row.contaFinanceira || '—') + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td></tr>';
+    }).join('') || '<tr><td colspan="8">Nenhuma movimentação encontrada.</td></tr>';
   }
 
   function renderSociosChart() {
