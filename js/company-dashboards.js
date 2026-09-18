@@ -264,7 +264,8 @@
   }
 
   function renderSociosDetailTable() {
-    document.getElementById('sociosDetailTableBody').innerHTML = sociosTransactions.map(function (row) {
+    const source = sociosMetric === 'all' ? sociosTransactions : sociosTransactions.filter(function (row) { return row.nome === sociosMetric; });
+    document.getElementById('sociosDetailTableBody').innerHTML = source.map(function (row) {
       return '<tr><td>' + row.date.toLocaleDateString('pt-BR') + '</td><td>' + escapeHtml(row.nome) + '</td><td>' + escapeHtml(row.movimento || '—') + '</td><td>' + escapeHtml(row.categoria || '—') + '</td><td>' + escapeHtml(row.clienteFornecedor || '—') + '</td><td>' + escapeHtml(row.contaFinanceira || '—') + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td></tr>';
     }).join('') || '<tr><td colspan="8">Nenhuma movimentação encontrada.</td></tr>';
   }
@@ -314,6 +315,7 @@
     if (!button) return;
     sociosMetric = button.dataset.sociosMetric;
     document.querySelectorAll('[data-socios-metric]').forEach(function (item) { item.classList.toggle('active', item === button); });
+    renderSociosDetailTable();
     renderSociosChart();
   });
 
