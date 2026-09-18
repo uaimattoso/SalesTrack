@@ -1,298 +1,177 @@
-(function () {
-  'use strict';
+function syncLoansAndAfacMatrix_(){const lock=LockService.getScriptLock();lock.waitLock(30000);try{const p=PropertiesService.getScriptProperties(),from='2024-06-20',to=p.getProperty('CA_LOANS_TO')||'2035-12-31';const cats=fetchMatrixFinancialCategories_('RECEITA').map(function(c){c._t='RECEITA';return c;}).concat(fetchMatrixFinancialCategories_('DESPESA').map(function(c){c._t='DESPESA';return c;})).filter(function(c){return /\bAFAC\b|EMPR[EÉ]STIM|ANTECIPA(?:ÇÃO|CAO)\s+(?:DE\s+)?(?:LUCROS?|DIVIDENDOS?)|DIVIDENDOS?/i.test(String(first_(c.nome,c.descricao,'')));});const ids=cats.map(function(c){return first_(c.id,c.uuid);}),names={};cats.forEach(function(c){names[first_(c.id,c.uuid)]=first_(c.nome,c.descricao,'Empréstimos/AFAC');});const all=[];cats.forEach(function(c){const t=c._t,path=t==='RECEITA'?'/v1/financeiro/eventos-financeiros/contas-a-receber/buscar':'/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar',categoryName=first_(c.nome,c.descricao,'Empréstimos/AFAC');let page=1,fetched=0;while(true){const b=caGetMatrix_(path,{pagina:page,tamanho_pagina:CA.pageSize,data_vencimento_de:from,data_vencimento_ate:to,ids_categorias:first_(c.id,c.uuid),campo_ordenado_ascendente:'DATA_VENCIMENTO'}),it=Array.isArray(b.itens)?b.itens:[];it.forEach(function(x){x._t=t;x._categoryName=categoryName;all.push(x);});fetched+=it.length;const total=number_(first_(b.itens_totais,b.total_itens,b.total_items,b.total),0);if(!it.length||(total&&fetched>=total)||it.length<CA.pageSize)break;page++;}});const details=fetchMatrixParcelDetails_(all),acquittances=fetchMatrixParcelAcquittances_(all),accounts=fetchMatrixFinancialAccounts_(),seen={};const rows=all.map(function(x){const id=first_(x.id,x.uuid,x.id_parcela),key=x._t+':'+id,detail=details[id]||x;if(seen[key])return null;seen[key]=1;const raw=JSON.stringify(x)+' '+JSON.stringify(detail);if(/RENATO\s+NERY/i.test(raw))return null;const st=String(first_(detail.status,x.status,x.situacao,'')).toUpperCase();if(st==='CANCELADO')return null;const due=dateValue_(first_(detail.data_pagamento_previsto,detail.data_pagamento_esperado,detail.data_vencimento,x.data_pagamento_previsto,x.data_pagamento_esperado,x.data_vencimento));if(!due||due<new Date(2024,5,20))return null;const pays=acquittances[id]||[],paid=pays.map(function(z){return dateValue_(first_(z.data_pagamento,z.data_recebimento,z.data));}).filter(function(z){return z;}).sort(function(a,b){return b-a;}),paidAt=paid[0]||dateValue_(first_(detail.data_pagamento,detail.data_recebimento,x.data_pagamento,x.data_recebimento)),situation=st==='QUITADO'||paidAt?'Pago':(due&&endOfDay_(due)<new Date()?'Atrasado':'Em aberto'),labels=ids.filter(function(cid){return cid&&raw.indexOf(cid)>=0;}).map(function(cid){return names[cid];}),category=first_(x._categoryName,labels.length?labels.sort().join(' / '):'Empréstimos/AFAC'),description=first_(detail.descricao,detail.nota,x.descricao,x.nota,'Não informado'),party=loanPartyName_(detail,x,x._t),amount=installmentNetValue_(pays,detail,x),classification=classifyShareholderMovement_(category,description,first_(readPath_(detail,['cliente.nome']),readPath_(x,['cliente.nome']),''),x._t);if(classification.shareholder==='Não identificado')return null;return[due,classification.shareholder,classification.movement,category,description,party,financialAccountName_(pays,detail,x,accounts),amount,classification.movement==='Aporte'?amount:'',classification.movement==='Devolução'?amount:'',situation];}).filter(function(x){return x&&!isExcludedPcaMovement_(x);}).sort(function(a,b){return a[0]-b[0];});writeLoansAndAfacSheet_(rows);writeShareholderDashboard_(rows,from);SpreadsheetApp.flush();SpreadsheetApp.getActive().toast(rows.length+' lançamentos e dashboard atualizados.','SalesTrack',8);return{rows:rows.length,categories:cats.length,from:from};}finally{lock.releaseLock();}}
+function fetchMatrixParcelDetails_(items){const out={};const token=getMatrixAccessToken_();for(let start=0;start<items.length;start+=50){const batch=items.slice(start,start+50).map(function(x){const id=first_(x.id,x.uuid,x.id_parcela);return{id:id,url:CA.apiBase+'/v1/financeiro/eventos-financeiros/parcelas/'+encodeURIComponent(id),method:'get',muteHttpExceptions:true,headers:{Authorization:'Bearer '+token,Accept:'application/json'}};});UrlFetchApp.fetchAll(batch).forEach(function(r,i){if(r.getResponseCode()>=200&&r.getResponseCode()<300){const b=safeJsonParse_(r.getContentText());out[batch[i].id]=b.parcela||b.data||b;}});}return out;}
 
-  const modal = document.getElementById('companyMenuModal');
-  const toggle = document.getElementById('companyMenuToggle');
-  const views = {
-    salestrack: document.getElementById('salestrack-view'),
-    socios: document.getElementById('socios-view'),
-    construction: document.getElementById('construction-view')
-  };
-  const footer = document.querySelector('.footer');
-  const originalFooter = footer ? footer.innerHTML : '';
-  let currentView = 'salestrack';
-  let sociosLoaded = false;
-  let sociosLoading = false;
-  let sociosRows = [];
-  let sociosTransactions = [];
-  let sociosChart = null;
-  let sociosMetric = 'all';
+function fetchMatrixParcelAcquittances_(items){const out={},ids=items.map(function(x){return first_(x.id,x.uuid,x.id_parcela);}).filter(function(id){return id;});for(let start=0;start<ids.length;start+=10){let pending=ids.slice(start,start+10);for(let attempt=0;attempt<3&&pending.length;attempt++){if(attempt)Utilities.sleep(1500*attempt);const token=getMatrixAccessToken_(),batch=pending.map(function(id){return{id:id,url:CA.apiBase+'/v1/financeiro/eventos-financeiros/parcelas/'+encodeURIComponent(id)+'/baixa',method:'get',muteHttpExceptions:true,headers:{Authorization:'Bearer '+token,Accept:'application/json'}};}),retry=[];UrlFetchApp.fetchAll(batch).forEach(function(r,i){const status=r.getResponseCode(),id=batch[i].id;if(status>=200&&status<300){const b=safeJsonParse_(r.getContentText());out[id]=Array.isArray(b)?b:(Array.isArray(b.itens)?b.itens:(Array.isArray(b.baixas)?b.baixas:(Array.isArray(b.data)?b.data:[])));}else if(status===401||status===429||status>=500){retry.push(id);}else{out[id]=[];}});pending=retry;if(pending.length&&attempt===0&&batch.length){PropertiesService.getScriptProperties().deleteProperty('CA_MATRIZ_TOKEN_EXPIRES_AT');}}pending.forEach(function(id){out[id]=[];});Utilities.sleep(750);}return out;}
+function fetchMatrixFinancialAccounts_(){const out={};let page=1;while(true){const b=caGetMatrix_('/v1/conta-financeira',{pagina:page,tamanho_pagina:500}),items=Array.isArray(b.itens)?b.itens:(Array.isArray(b)?b:[]);items.forEach(function(a){const id=first_(a.id,a.uuid,a.id_conta_financeira);if(id)out[id]=first_(a.nome,a.descricao,id);});const total=number_(first_(b.itens_totais,b.total_itens,b.total),0);if(!items.length||(total&&page*500>=total)||items.length<500)break;page++;}return out;}
+function financialAccountName_(pays,detail,summary,accounts){const names=[];(pays||[]).forEach(function(z){const raw=first_(readPath_(z,['conta_financeira.nome']),z.conta_financeira,z.id_conta_financeira);const name=accounts[raw]||raw;if(name&&names.indexOf(name)<0)names.push(name);});if(names.length)return names.join(' / ');const raw=first_(readPath_(detail,['conta_financeira.nome']),detail.conta_financeira,detail.id_conta_financeira,readPath_(summary,['conta_financeira.nome']),summary.conta_financeira,summary.id_conta_financeira);return accounts[raw]||raw||'Não informada';}
+function installmentNetValue_(p,detail,summary){p=Array.isArray(p)?p:[];const settled=round2_(p.reduce(function(t,z){return t+number_(first_(readPath_(z,['valor_composicao.valor_liquido','composicao_valor.valor_liquido']),z.valor_liquido,z.valor_pago),0);},0));if(settled)return settled;return round2_(number_(first_(readPath_(detail,['valor_composicao.valor_liquido','composicao_valor.valor_liquido']),detail.valor_total_liquido,detail.nao_pago,detail.valor,readPath_(summary,['valor_composicao.valor_liquido','composicao_valor.valor_liquido']),summary.valor_total_liquido,summary.nao_pago,summary.valor),0));}
+function normalizePartnerText_(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();}
+function classifyShareholderMovement_(category,description,client,type){if(/JUROS\s+SOBRE\s+EMPRESTIMOS\s+E\s+FINANCIAMENTOS/.test(normalizePartnerText_(category)))return{shareholder:'Não identificado',movement:''};if(/EMPRESTIMOS?\s*-\s*JET\s*STAR|EMPRESTIMO\s+DE\s+SOCIOS\s*-\s*JET\s+STAR/.test(normalizePartnerText_(category)))return{shareholder:'Jet Star',movement:type==='DESPESA'?'Devolução':'Aporte'};if(/AFAC\s*-\s*DURCESIO\s+ANDRADE\s+MELLO|EMPRESTIMO\s+DE\s+SOCIOS\s*-\s*DURCESIO\s+MELLO|EMPRESTIMOS\s*-\s*DURCESIO\s+MELLO/.test(normalizePartnerText_(category)))return{shareholder:'Durcesio Mello',movement:type==='DESPESA'?'Devolução':'Aporte'};if(/JET\s*STAR/.test(normalizePartnerText_(category))&&/JUROS\s+SOBRE\s+EMPRESTIMOS\s+E\s+FINANCIAMENTOS/.test(normalizePartnerText_(description)))return{shareholder:'Não identificado',movement:''};const categoryText=normalizePartnerText_(category),clientText=normalizePartnerText_(client),legacyText=normalizePartnerText_([category,description].join(' ')),categoryHasPartner=/DURCESIO|ANDERSON|JOSE CARLOS|JOSE DOMINGOS|LUIZ EDUARDO|RAPHAEL GINDRE|JOAO PEDRO|PICORELLI|VERONIKA|AP&JB|AP E JB|APJB/.test(categoryText),text=categoryHasPartner?categoryText:(clientText||legacyText),dividend=/ANTECIPACAO.*(?:DIVIDEND|LUCRO)|DIVIDEND/.test(legacyText);let shareholder;if(categoryText.replace(/\s+/g,' ').trim()==='ANTECIPACAO DE DIVIDENDOS'){shareholder='Anderson Simões';}else if(!categoryHasPartner&&(/\bPCA\b|GRUPO PERFORMANCE CONSULTORIA/.test(clientText))){shareholder='Não identificado';}else if(/DURCESIO/.test(text)){shareholder='Durcesio Mello';}else if(/ANDERSON/.test(text)){shareholder='Anderson Simões';}else if(/JOSE CARLOS/.test(text)){shareholder='Jose Carlos';}else if(/JOSE DOMINGOS/.test(text)){shareholder='José Domingos';}else if(/LUIZ EDUARDO/.test(text)){shareholder='Luiz Eduardo';}else if(/RAPHAEL GINDRE/.test(text)){shareholder='Raphael Gindre';}else if(/JOAO PEDRO|PICORELLI/.test(text)){shareholder='João Pedro Picorelli Durão';}else if(/VERONIKA|AP&JB|AP E JB|APJB/.test(text)){shareholder='Anderson Simões';}else if(!clientText&&dividend){shareholder='Anderson Simões';}else{shareholder='Não identificado';}const movement=type==='RECEITA'?'Aporte':type==='DESPESA'?'Devolução':dividend||/DEVOLUCAO|RETIRADA/.test(legacyText)?'Devolução':'Aporte';return{shareholder:shareholder,movement:movement};}
+function writeLoansAndAfacSheet_(rows){const ss=SpreadsheetApp.getActive(),name='Emprestimos_e_AFAC',s=ss.getSheetByName(name)||ss.insertSheet(name),h=['Data prevista','Sócio/Acionista','Movimento','Categoria','Descrição','Cliente/Fornecedor','Conta financeira','Valor líquido','Valor aplicado','Valor devolvido','Situação'],f=s.getFilter();if(f)f.remove();s.clearContents();s.getRange(1,1,1,h.length).setValues([h]).setBackground('#E5E7EB').setFontColor('#111827').setFontWeight('bold');if(rows.length)s.getRange(2,1,rows.length,h.length).setValues(rows);s.setFrozenRows(1);s.getRange('A:A').setNumberFormat('dd/MM/yyyy');s.getRange('H:J').setNumberFormat('R$ #,##0.00');if(rows.length)s.getRange(1,1,rows.length+1,h.length).createFilter();[110,210,110,300,340,220,210,150,150,150,100].forEach(function(w,i){s.setColumnWidth(i+1,w);});ss.setActiveSheet(s);}
+function writeShareholderDashboard_(rows,from){const ss=SpreadsheetApp.getActive(),name='Dashboard_Socios',s=ss.getSheetByName(name)||ss.insertSheet(name),totals={};rows.forEach(function(r){if(r[10]!=='Pago')return;const partner=r[1];if(!totals[partner])totals[partner]={applied:0,returned:0};totals[partner].applied+=number_(r[8],0);totals[partner].returned+=number_(r[9],0);});const summary=Object.keys(totals).sort().map(function(partner){const t=totals[partner];return[partner,round2_(t.applied),round2_(t.returned),round2_(t.applied-t.returned)];});s.getCharts().forEach(function(c){s.removeChart(c);});s.clear();s.getRange('A1:D1').merge().setValue('Dashboard de Aportes e Devoluções por Sócio').setBackground('#1F4E78').setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');s.getRange('A2:D2').merge().setValue('Movimentações liquidadas a partir de '+from.split('-').reverse().join('/')).setFontStyle('italic').setHorizontalAlignment('center');s.getRange(3,1,1,4).setValues([['Sócio/Acionista','Total aplicado','Total devolvido','Saldo líquido']]).setBackground('#D9EAF7').setFontWeight('bold');if(summary.length)s.getRange(4,1,summary.length,4).setValues(summary);s.getRange('B:D').setNumberFormat('R$ #,##0.00');s.setFrozenRows(3);s.setColumnWidth(1,260);s.setColumnWidths(2,3,160);if(summary.length){const chart=s.newChart().asColumnChart().addRange(s.getRange(3,1,summary.length+1,3)).setPosition(3,6,0,0).setOption('title','Aplicado x Devolvido por Sócio').setOption('legend',{position:'top'}).build();s.insertChart(chart);}}
 
-  document.body.dataset.dashboard = 'salestrack';
+// Saída da PCA em 25/06/2024: não pertence aos movimentos de Anderson.
+function isExcludedPcaMovement_(row) {
+  const date = dateValue_(row[0]);
+  return !!date && Utilities.formatDate(date, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd') === '2024-06-25'
+    && Math.round(number_(row[7], 0) * 100) === 3082571
+    && /GRUPO PERFORMANCE CONSULTORIA/.test(normalizePartnerText_(row[5]));
+}
+function removePcaFromShareholders() {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const sheet = SpreadsheetApp.getActive().getSheetByName('Emprestimos_e_AFAC');
+    const rows = sheet.getDataRange().getValues().slice(1);
+    const excluded = rows.map(function(row, i) { return isExcludedPcaMovement_(row) ? i + 2 : 0; }).filter(function(i) { return i; });
+    if (excluded.length !== 1) throw new Error('Esperado exatamente um lançamento da PCA; encontrados: ' + excluded.length);
+    sheet.deleteRow(excluded[0]);
+    writeShareholderDashboard_(rows.filter(function(row) { return !isExcludedPcaMovement_(row); }), '2024-06-20');
+    SpreadsheetApp.flush();
+    console.log('Excluído um lançamento da PCA de R$ 30.825,71; dashboard recalculado.');
+  } finally { lock.releaseLock(); }
+}
 
-  function openMenu() {
-    modal.classList.remove('hidden');
-    toggle.setAttribute('aria-expanded', 'true');
-    document.body.style.overflow = 'hidden';
-    const selected = modal.querySelector('.company-option.selected') || modal.querySelector('.company-option');
-    if (selected) selected.focus();
-  }
-
-  function closeMenu() {
-    modal.classList.add('hidden');
-    toggle.setAttribute('aria-expanded', 'false');
-    document.body.style.overflow = '';
-    toggle.focus();
-  }
-
-  function showView(name) {
-    currentView = name;
-    Object.values(views).forEach(function (view) { view.classList.add('hidden'); });
-    modal.querySelectorAll('.company-option').forEach(function (option) {
-      option.classList.toggle('selected', option.dataset.view === name);
+function correctAndersonReceiptClassification() {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActive(), sheet = ss.getSheetByName('Emprestimos_e_AFAC');
+    const rows = sheet.getDataRange().getValues().slice(1), targets = [];
+    rows.forEach(function(row, index) {
+      if (row[1] !== 'Anderson Simões') return;
+      const date = dateValue_(row[0]);
+      if (!date) return;
+      const day = Utilities.formatDate(date, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+      const cents = Math.round(number_(row[7], 0) * 100);
+      if ((day === '2025-05-26' && cents === 12434 && normalizePartnerText_(row[4]) === 'DEVOLUCAO DO PAGAMENTO NAO UTILIZADO') ||
+          (day === '2026-02-10' && cents === 680000 && normalizePartnerText_(row[4]) === 'DEVOLUCAO EMPRESTIMO')) targets.push(index);
     });
-
-    document.body.dataset.dashboard = name;
-    if (name === 'salestrack') {
-      views.salestrack.classList.remove('hidden');
-      if (footer) footer.innerHTML = originalFooter;
-    } else if (name === 'socios') {
-      views.socios.classList.remove('hidden');
-      if (footer) footer.textContent = 'Fazenda Eldorado — Dashboard de Sócios';
-      loadSocios();
-    } else {
-      const isDre = name === 'dre';
-      document.getElementById('constructionTitle').textContent = isDre ? 'DRE em construção' : 'Fluxo de Caixa em construção';
-      document.getElementById('constructionDescription').textContent = isDre
-        ? 'O demonstrativo de resultados será disponibilizado aqui em breve.'
-        : 'A visão interativa de entradas, saídas e projeções será disponibilizada aqui em breve.';
-      views.construction.classList.remove('hidden');
-      if (footer) footer.textContent = 'Fazenda Eldorado — ' + (isDre ? 'DRE' : 'Fluxo de Caixa');
-    }
-    closeMenu();
-  }
-
-  function parseCsv(text) {
-    const rows = [];
-    let row = [], field = '', quoted = false;
-    for (let i = 0; i < text.length; i += 1) {
-      const char = text[i];
-      if (char === '"') {
-        if (quoted && text[i + 1] === '"') { field += '"'; i += 1; }
-        else quoted = !quoted;
-      } else if (char === ',' && !quoted) {
-        row.push(field); field = '';
-      } else if ((char === '\n' || char === '\r') && !quoted) {
-        if (char === '\r' && text[i + 1] === '\n') i += 1;
-        row.push(field); field = '';
-        if (row.some(function (value) { return value.trim(); })) rows.push(row);
-        row = [];
-      } else field += char;
-    }
-    if (field || row.length) { row.push(field); rows.push(row); }
-    return rows;
-  }
-
-  function toNumber(value) {
-    const clean = String(value || '').replace(/R\$|\s/g, '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
-    return Number(clean) || 0;
-  }
-
-  function money(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-  }
-
-  function parseBrDate(value) {
-    const match = String(value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return match ? new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1])) : null;
-  }
-
-  function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, function (char) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char];
+    if (targets.length !== 2) throw new Error('Esperados dois recebimentos comprovados pelo Excel; encontrados: '+targets.length);
+    targets.forEach(function(index) {
+      const row = rows[index]; row[2] = 'Aporte'; row[8] = row[7]; row[9] = '';
+      sheet.getRange(index + 2, 3).setValue(row[2]);
+      sheet.getRange(index + 2, 9, 1, 2).setValues([[row[8], row[9]]]);
     });
-  }
+    writeShareholderDashboard_(rows, '2024-06-20'); SpreadsheetApp.flush();
+    console.log('Dois recebimentos reclassificados, total R$ 6.924,34, conforme Excel do Conta Azul.');
+  } finally { lock.releaseLock(); }
+}
 
-  function normalizeName(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-  }
+function loanPartyName_(detail,summary,type){const path=type==='DESPESA'?'fornecedor.nome':'cliente.nome';const candidates=[readPath_(detail,[path]),readPath_(summary,[path])];for(let i=0;i<candidates.length;i++){if(typeof candidates[i]==='string'&&candidates[i].trim())return candidates[i].trim();}return 'Não informado';}
 
-  function isPca(value) {
-    return /\bPCA\b|GRUPO PERFORMANCE CONSULTORIA/.test(normalizeName(value));
-  }
 
-  function interpretedPartnerName(value) {
-    return String(value || '').trim();
-  }
+function syncLoansAndAfac() {
+  const matrixResult = syncLoansAndAfacMatrix_();
+    const ss = SpreadsheetApp.getActive();
+      const target = ss.getSheetByName('Emprestimos_e_AFAC');
+        const matrixRows = target.getLastRow() > 1 ? target.getRange(2, 1, target.getLastRow() - 1, 11).getValues() : [];
+          matrixRows.forEach(function(row) { row.push('Matriz'); });
+            const filialRows = fetchLoansAndAfacFilial_();
+              filialRows.forEach(function(row) { row.push('Filial'); });
+                const rows = matrixRows.concat(filialRows).sort(function(a, b) { return new Date(a[0]) - new Date(b[0]); });
+                  writeLoansAndAfacWithOrigin_(rows);
+                    const dashboard = ss.getSheetByName('Dashboard_Socios');
+                      if (dashboard) ss.deleteSheet(dashboard);
+                        writeAudit_('SUCESSO', new Date(2024, 5, 20), new Date(), matrixRows.length + filialRows.length, rows.length, 'Empréstimos/AFAC: Matriz ' + matrixRows.length + ', Filial ' + filialRows.length, new Date());
+                          SpreadsheetApp.flush();
+                            ss.toast(rows.length + ' lançamentos consolidados: Matriz ' + matrixRows.length + ' e Filial ' + filialRows.length + '.', 'SalesTrack', 8);
+                              return {rows: rows.length, matriz: matrixRows.length, filial: filialRows.length, matrixResult: matrixResult};
+                              }
 
-  const FORMAL_SHAREHOLDERS = [
-    'Anderson Simões',
-    'José Carlos',
-    'José Domingos',
-    'Luiz Eduardo',
-    'Raphael Gindre',
-    'Durcesio Mello',
-    'Jet Star'
-  ];
+                              function fetchLoansAndAfacFilial_() {
+                                const from = '2024-06-20';
+                                  const to = PropertiesService.getScriptProperties().getProperty('CA_LOANS_TO') || '2035-12-31';
+                                    const cats = fetchFinancialCategories_('RECEITA').map(function(c) { c._t = 'RECEITA'; return c; })
+                                        .concat(fetchFinancialCategories_('DESPESA').map(function(c) { c._t = 'DESPESA'; return c; }))
+                                            .filter(function(c) { return /\bAFAC\b|EMPR[EÉ]STIM|ANTECIPA(?:ÇÃO|CAO)\s+(?:DE\s+)?(?:LUCROS?|DIVIDENDOS?)|DIVIDENDOS?/i.test(String(first_(c.nome, c.descricao, ''))); });
+                                              const ids = cats.map(function(c) { return first_(c.id, c.uuid); });
+                                                const names = {};
+                                                  cats.forEach(function(c) { names[first_(c.id, c.uuid)] = first_(c.nome, c.descricao, 'Empréstimos/AFAC'); });
+                                                    const all = [];
+                                                      cats.forEach(function(c) {
+                                                          const type = c._t;
+                                                              const path = type === 'RECEITA' ? '/v1/financeiro/eventos-financeiros/contas-a-receber/buscar' : '/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar';
+                                                                  let page = 1, fetched = 0;
+                                                                      while (true) {
+                                                                            const body = caGet_(path, {pagina: page, tamanho_pagina: CA.pageSize, data_vencimento_de: from, data_vencimento_ate: to, ids_categorias: first_(c.id, c.uuid), campo_ordenado_ascendente: 'DATA_VENCIMENTO'});
+                                                                                  const items = Array.isArray(body.itens) ? body.itens : [];
+                                                                                        items.forEach(function(x) { x._t = type; x._categoryName = first_(c.nome, c.descricao, 'Empréstimos/AFAC'); all.push(x); });
+                                                                                              fetched += items.length;
+                                                                                                    const total = number_(first_(body.itens_totais, body.total_itens, body.total_items, body.total), 0);
+                                                                                                          if (!items.length || (total && fetched >= total) || items.length < CA.pageSize) break;
+                                                                                                                page++;
+                                                                                                                    }
+                                                                                                                      });
+                                                                                                                        const details = fetchFilialParcelDetails_(all);
+                                                                                                                          const acquittances = fetchFilialParcelAcquittances_(all);
+                                                                                                                            const accounts = fetchFilialFinancialAccounts_();
+                                                                                                                              const seen = {};
+                                                                                                                                return all.map(function(x) {
+                                                                                                                                    const id = first_(x.id, x.uuid, x.id_parcela), key = x._t + ':' + id, detail = details[id] || x;
+                                                                                                                                        if (seen[key]) return null;
+                                                                                                                                            seen[key] = 1;
+                                                                                                                                                const raw = JSON.stringify(x) + ' ' + JSON.stringify(detail);
+                                                                                                                                                    if (/RENATO\s+NERY/i.test(raw)) return null;
+                                                                                                                                                        const status = String(first_(detail.status, x.status, x.situacao, '')).toUpperCase();
+                                                                                                                                                            if (status === 'CANCELADO') return null;
+                                                                                                                                                                const due = dateValue_(first_(detail.data_pagamento_previsto, detail.data_pagamento_esperado, detail.data_vencimento, x.data_pagamento_previsto, x.data_pagamento_esperado, x.data_vencimento));
+                                                                                                                                                                    if (!due || due < new Date(2024, 5, 20)) return null;
+                                                                                                                                                                        const pays = acquittances[id] || [];
+                                                                                                                                                                            const paid = pays.map(function(z) { return dateValue_(first_(z.data_pagamento, z.data_recebimento, z.data)); }).filter(Boolean).sort(function(a,b) { return b-a; });
+                                                                                                                                                                                const paidAt = paid[0] || dateValue_(first_(detail.data_pagamento, detail.data_recebimento, x.data_pagamento, x.data_recebimento));
+                                                                                                                                                                                    const situation = status === 'QUITADO' || paidAt ? 'Pago' : (endOfDay_(due) < new Date() ? 'Atrasado' : 'Em aberto');
+                                                                                                                                                                                        const labels = ids.filter(function(cid) { return cid && raw.indexOf(cid) >= 0; }).map(function(cid) { return names[cid]; });
+                                                                                                                                                                                            const category = first_(x._categoryName, labels.length ? labels.sort().join(' / ') : 'Empréstimos/AFAC');
+                                                                                                                                                                                                const description = first_(detail.descricao, detail.nota, x.descricao, x.nota, 'Não informado');
+                                                                                                                                                                                                    const party = loanPartyName_(detail, x, x._t);
+                                                                                                                                                                                                        const amount = installmentNetValue_(pays, detail, x);
+                                                                                                                                                                                                            const classification = classifyShareholderMovement_(category, description, first_(readPath_(detail, ['cliente.nome']), readPath_(x, ['cliente.nome']), ''), x._t);
+                                                                                                                                                                                                                if (classification.shareholder === 'Não identificado') return null;
+                                                                                                                                                                                                                    return [due, classification.shareholder, classification.movement, category, description, party, financialAccountName_(pays, detail, x, accounts), amount, classification.movement === 'Aporte' ? amount : '', classification.movement === 'Devolução' ? amount : '', situation];
+                                                                                                                                                                                                                      }).filter(function(row) { return row && !isExcludedPcaMovement_(row); });
+                                                                                                                                                                                                                      }
 
-  function formalShareholderName(value) {
-    const normalized = normalizeName(interpretedPartnerName(value));
-    return FORMAL_SHAREHOLDERS.find(function (name) { return normalizeName(name) === normalized; }) || null;
-  }
+                                                                                                                                                                                                                      function fetchFilialParcelDetails_(items) {
+                                                                                                                                                                                                                        const out = {}, token = getAccessToken_();
+                                                                                                                                                                                                                          for (let start = 0; start < items.length; start += 50) {
+                                                                                                                                                                                                                              const batch = items.slice(start, start + 50).map(function(x) { const id = first_(x.id, x.uuid, x.id_parcela); return {id: id, url: CA.apiBase + '/v1/financeiro/eventos-financeiros/parcelas/' + encodeURIComponent(id), method: 'get', muteHttpExceptions: true, headers: {Authorization: 'Bearer ' + token, Accept: 'application/json'}}; });
+                                                                                                                                                                                                                                  UrlFetchApp.fetchAll(batch).forEach(function(r, i) { if (r.getResponseCode() >= 200 && r.getResponseCode() < 300) { const b = safeJsonParse_(r.getContentText()); out[batch[i].id] = b.parcela || b.data || b; } });
+                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                      return out;
+                                                                                                                                                                                                                                      }
 
-  async function loadSocios() {
-    if (sociosLoading) return;
-    sociosLoading = true;
-    const status = document.getElementById('sociosStatus');
-    const refresh = document.getElementById('sociosRefresh');
-    refresh.disabled = true;
-    status.classList.remove('error');
-    status.textContent = 'Consultando planilha…';
-    const controller = new AbortController();
-    const timeout = setTimeout(function () { controller.abort(); }, 20000);
-    try {
-      const response = await fetch(window.SALES_TRACK_CONFIG.sociosCsvUrl + '&_=' + Date.now(), { cache: 'no-store', signal: controller.signal });
-      if (!response.ok) throw new Error('Falha ao consultar a planilha');
-      const matrix = parseCsv(await response.text());
-      const headers = ['Data prevista', 'Sócio/Acionista', 'Valor aplicado', 'Valor devolvido', 'Situação'];
-      const headerIndex = matrix.findIndex(function (row) {
-        return headers.every(function (name) { return row.includes(name); });
-      });
-      if (headerIndex < 0) throw new Error('Base de empréstimos e AFAC não disponível');
-      const columns = headers.map(function (name) { return matrix[headerIndex].indexOf(name); });
-      const partners = new Map();
-      const transactions = [];
-      matrix.slice(headerIndex + 1).forEach(function (row) {
-        const date = parseBrDate(row[columns[0]]);
-        const nome = formalShareholderName(row[columns[1]]);
-        if (!date || !nome || isPca(nome) || String(row[columns[4]] || '').trim() !== 'Pago') return;
-        const aplicado = toNumber(row[columns[2]]);
-        const devolvido = toNumber(row[columns[3]]);
-        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
-        partner.aplicado += Math.round(aplicado * 100);
-        partner.devolvido += Math.round(devolvido * 100);
-        if (aplicado > 0 && (!partner.ultimoAporte || date > partner.ultimoAporte)) partner.ultimoAporte = date;
-        partners.set(nome, partner);
-        transactions.push({ date: date, nome: nome, aplicado: aplicado, devolvido: devolvido });
-      });
-      const rows = FORMAL_SHAREHOLDERS.map(function (nome) {
-        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
-        partner.saldo = (partner.aplicado - partner.devolvido) / 100;
-        partner.aplicado /= 100;
-        partner.devolvido /= 100;
-        return partner;
-      });
-      if (!rows.length) throw new Error('Nenhum dado disponível');
-      sociosRows = rows;
-      sociosTransactions = transactions;
-      sociosLoaded = true;
-      status.textContent = 'Planilha consultada às ' + new Date().toLocaleTimeString('pt-BR');
-      renderSociosControls();
-      renderSocios();
-    } catch (error) {
-      status.textContent = sociosLoaded ? 'Falha ao atualizar — exibindo a última consulta' : 'Não foi possível consultar a planilha';
-      status.classList.add('error');
-      if (!sociosLoaded) {
-        ['sociosTotalAplicado', 'sociosTotalDevolvido', 'sociosSaldoLiquido', 'sociosTotalAplicadoSub'].forEach(function (id) {
-          document.getElementById(id).textContent = '—';
-        });
-        document.getElementById('sociosTableBody').innerHTML = '<tr><td colspan="5">A base de sócios está indisponível. Confira o acesso à planilha e tente atualizar novamente.</td></tr>';
-      }
-    } finally {
-      clearTimeout(timeout);
-      sociosLoading = false;
-      refresh.disabled = false;
-    }
-  }
+                                                                                                                                                                                                                                      function fetchFilialParcelAcquittances_(items) {
+                                                                                                                                                                                                                                        const out = {}, ids = items.map(function(x) { return first_(x.id, x.uuid, x.id_parcela); }).filter(Boolean);
+                                                                                                                                                                                                                                          for (let start = 0; start < ids.length; start += 10) {
+                                                                                                                                                                                                                                              const token = getAccessToken_();
+                                                                                                                                                                                                                                                  const batch = ids.slice(start, start + 10).map(function(id) { return {id: id, url: CA.apiBase + '/v1/financeiro/eventos-financeiros/parcelas/' + encodeURIComponent(id) + '/baixa', method: 'get', muteHttpExceptions: true, headers: {Authorization: 'Bearer ' + token, Accept: 'application/json'}}; });
+                                                                                                                                                                                                                                                      UrlFetchApp.fetchAll(batch).forEach(function(r, i) { const b = r.getResponseCode() >= 200 && r.getResponseCode() < 300 ? safeJsonParse_(r.getContentText()) : []; out[batch[i].id] = Array.isArray(b) ? b : (Array.isArray(b.itens) ? b.itens : (Array.isArray(b.baixas) ? b.baixas : (Array.isArray(b.data) ? b.data : []))); });
+                                                                                                                                                                                                                                                          Utilities.sleep(750);
+                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                              return out;
+                                                                                                                                                                                                                                                              }
 
-  function renderSociosControls() {
-    const controls = document.querySelector('.socios-chart-controls');
-    const available = sociosRows.map(function (row) { return row.nome; });
-    if (sociosMetric !== 'all' && !available.includes(sociosMetric)) sociosMetric = 'all';
-    controls.innerHTML = ['<button class="metric-button' + (sociosMetric === 'all' ? ' active' : '') + '" type="button" data-socios-metric="all">Todos</button>']
-      .concat(available.map(function (name) {
-        return '<button class="metric-button' + (sociosMetric === name ? ' active' : '') + '" type="button" data-socios-metric="' + escapeHtml(name) + '">' + escapeHtml(name) + '</button>';
-      })).join('');
-  }
+                                                                                                                                                                                                                                                              function fetchFilialFinancialAccounts_() {
+                                                                                                                                                                                                                                                                const out = {}; let page = 1;
+                                                                                                                                                                                                                                                                  while (true) {
+                                                                                                                                                                                                                                                                      const body = caGet_('/v1/conta-financeira', {pagina: page, tamanho_pagina: 500});
+                                                                                                                                                                                                                                                                          const items = Array.isArray(body.itens) ? body.itens : (Array.isArray(body) ? body : []);
+                                                                                                                                                                                                                                                                              items.forEach(function(a) { const id = first_(a.id, a.uuid, a.id_conta_financeira); if (id) out[id] = first_(a.nome, a.descricao, id); });
+                                                                                                                                                                                                                                                                                  const total = number_(first_(body.itens_totais, body.total_itens, body.total), 0);
+                                                                                                                                                                                                                                                                                      if (!items.length || (total && page * 500 >= total) || items.length < 500) break;
+                                                                                                                                                                                                                                                                                          page++;
+                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                              return out;
+                                                                                                                                                                                                                                                                                              }
 
-  function renderSocios() {
-    const totals = sociosRows.reduce(function (sum, row) {
-      sum.aplicado += row.aplicado;
-      sum.devolvido += row.devolvido;
-      sum.saldo += row.saldo;
-      return sum;
-    }, { aplicado: 0, devolvido: 0, saldo: 0 });
-    document.getElementById('sociosTotalAplicado').textContent = money(totals.aplicado);
-    document.getElementById('sociosTotalDevolvido').textContent = money(totals.devolvido);
-    document.getElementById('sociosSaldoLiquido').textContent = money(totals.saldo);
-    document.getElementById('sociosTotalAplicadoSub').textContent = sociosRows.length + ' acionistas';
-    const anderson = sociosRows.find(function (row) { return row.nome === 'Anderson Simões'; }) || { aplicado: 0, devolvido: 0, saldo: 0 };
-    document.getElementById('sociosAndersonSaldo').textContent = money(anderson.saldo);
-    document.getElementById('sociosAndersonAplicado').textContent = money(anderson.aplicado);
-    document.getElementById('sociosAndersonDevolvido').textContent = money(anderson.devolvido);
-    const largest = sociosRows.reduce(function (best, row) { return !best || row.saldo > best.saldo ? row : best; }, null);
-    document.getElementById('sociosMaiorNome').textContent = largest ? largest.nome : '—';
-    document.getElementById('sociosMaiorSaldo').textContent = money(largest ? largest.saldo : 0);
-    document.getElementById('sociosMaiorAplicado').textContent = money(largest ? largest.aplicado : 0);
-    document.getElementById('sociosMaiorDevolvido').textContent = money(largest ? largest.devolvido : 0);
-    const latestDate = sociosTransactions.reduce(function (latest, item) { return !latest || item.date > latest ? item.date : latest; }, null);
-    const monthRows = latestDate ? sociosTransactions.filter(function (item) { return item.date.getFullYear() === latestDate.getFullYear() && item.date.getMonth() === latestDate.getMonth(); }) : [];
-    const month = monthRows.reduce(function (sum, item) { sum.aplicado += item.aplicado; sum.devolvido += item.devolvido; return sum; }, { aplicado: 0, devolvido: 0 });
-    document.getElementById('sociosMesLabel').textContent = latestDate ? 'Movimentação — ' + latestDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Movimentação do mês';
-    document.getElementById('sociosMesLiquido').textContent = money(month.aplicado - month.devolvido);
-    document.getElementById('sociosMesAplicado').textContent = money(month.aplicado);
-    document.getElementById('sociosMesDevolvido').textContent = money(month.devolvido);
-    renderSociosTable();
-    renderSociosChart();
-  }
-
-  function renderSociosTable() {
-    const query = document.getElementById('sociosSearch').value.trim().toLocaleLowerCase('pt-BR');
-    const filtered = sociosRows.filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); });
-    document.getElementById('sociosTableBody').innerHTML = filtered.map(function (row) {
-      const ultimoAporte = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
-      return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimoAporte + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
-    }).join('') || '<tr><td colspan="5">Nenhum acionista encontrado.</td></tr>';
-  }
-
-  function renderSociosChart() {
-    const isLight = document.documentElement.dataset.theme === 'light';
-    const source = sociosMetric === 'all' ? sociosTransactions : sociosTransactions.filter(function (item) { return item.nome === sociosMetric; });
-    const months = new Map();
-    source.forEach(function (item) {
-      const key = item.date.getFullYear() + '-' + String(item.date.getMonth() + 1).padStart(2, '0');
-      const month = months.get(key) || { date: new Date(item.date.getFullYear(), item.date.getMonth(), 1), aplicado: 0, devolvido: 0 };
-      month.aplicado += item.aplicado; month.devolvido += item.devolvido; months.set(key, month);
-    });
-    const monthly = Array.from(months.values()).sort(function (a, b) { return a.date - b.date; });
-    let accumulated = 0;
-    const balances = monthly.map(function (item) { accumulated += item.aplicado - item.devolvido; return accumulated; });
-    const datasets = [
-      { type: 'bar', label: 'Aplicado no mês', data: monthly.map(function (item) { return item.aplicado; }), backgroundColor: '#3b82f6', borderRadius: 5 },
-      { type: 'bar', label: 'Devolvido no mês', data: monthly.map(function (item) { return item.devolvido; }), backgroundColor: '#fcb900', borderRadius: 5 },
-      { type: 'line', label: 'Saldo líquido acumulado', data: balances, borderColor: '#22c55e', backgroundColor: '#22c55e', borderWidth: 3, pointRadius: 2, pointHoverRadius: 5, tension: 0.25 }
-    ];
-    if (sociosChart) sociosChart.destroy();
-    sociosChart = new Chart(document.getElementById('sociosChart'), {
-      type: 'bar',
-      data: { labels: monthly.map(function (item) { return item.date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', ''); }), datasets: datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { labels: { color: isLight ? '#334155' : '#cbd5e1', usePointStyle: true } }, tooltip: { callbacks: { label: function (item) { return item.dataset.label + ': ' + money(item.raw); } } } },
-        scales: {
-          x: { stacked: false, ticks: { color: isLight ? '#475569' : '#94a3b8', maxRotation: 45 }, grid: { display: false } },
-          y: { ticks: { color: isLight ? '#475569' : '#94a3b8', callback: function (value) { return 'R$ ' + (value / 1000000).toFixed(1).replace('.', ',') + ' mi'; } }, grid: { color: isLight ? 'rgba(15,23,42,.08)' : 'rgba(148,163,184,.09)' } }
-        }
-      }
-    });
-  }
-
-  toggle.addEventListener('click', openMenu);
-  modal.querySelectorAll('[data-close-company-menu]').forEach(function (button) { button.addEventListener('click', closeMenu); });
-  modal.querySelectorAll('.company-option').forEach(function (button) { button.addEventListener('click', function () { showView(button.dataset.view); }); });
-  document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeMenu(); });
-  document.getElementById('sociosSearch').addEventListener('input', renderSociosTable);
-  document.getElementById('sociosRefresh').addEventListener('click', loadSocios);
-  document.querySelector('.socios-chart-controls').addEventListener('click', function (event) {
-    const button = event.target.closest('[data-socios-metric]');
-    if (!button) return;
-    sociosMetric = button.dataset.sociosMetric;
-    document.querySelectorAll('[data-socios-metric]').forEach(function (item) { item.classList.toggle('active', item === button); });
-    renderSociosChart();
-  });
-
-  new MutationObserver(function () { if (sociosLoaded && currentView === 'socios') renderSociosChart(); })
-    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-})();
+                                                                                                                                                                                                                                                                                              function writeLoansAndAfacWithOrigin_(rows) {
+                                                                                                                                                                                                                                                                                                const ss = SpreadsheetApp.getActive(), sheet = ss.getSheetByName('Emprestimos_e_AFAC');
+                                                                                                                                                                                                                                                                                                  const headers = ['Data prevista','Sócio/Acionista','Movimento','Categoria','Descrição','Cliente/Fornecedor','Conta financeira','Valor líquido','Valor aplicado','Valor devolvido','Situação','Origem'];
+                                                                                                                                                                                                                                                                                                    const filter = sheet.getFilter(); if (filter) filter.remove();
+                                                                                                                                                                                                                                                                                                      sheet.clearContents();
+                                                                                                                                                                                                                                                                                                        sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setBackground('#E5E7EB').setFontColor('#111827').setFontWeight('bold');
+                                                                                                                                                                                                                                                                                                          if (rows.length) sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+                                                                                                                                                                                                                                                                                                            sheet.setFrozenRows(1); sheet.getRange('A:A').setNumberFormat('dd/MM/yyyy'); sheet.getRange('H:J').setNumberFormat('R$ #,##0.00');
+                                                                                                                                                                                                                                                                                                              if (rows.length) sheet.getRange(1, 1, rows.length + 1, headers.length).createFilter();
+                                                                                                                                                                                                                                                                                                                [110,210,110,300,340,220,210,150,150,150,100,100].forEach(function(width, index) { sheet.setColumnWidth(index + 1, width); });
+                                                                                                                                                                                                                                                                                                                  ss.setActiveSheet(sheet);
+                                                                                                                                                                                                                                                                                                                  }
