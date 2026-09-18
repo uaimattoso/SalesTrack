@@ -417,7 +417,7 @@ body:not([data-dashboard="salestrack"]) #newFileBtn {
 }
 
 .socios-header-title { display: none; }
-body[data-dashboard="socios"] .header-file-info { display: flex; min-width: 330px; padding-left: 22px; }
+body[data-dashboard="socios"] .header-file-info { display: flex !important; min-width: 330px; padding-left: 22px; }
 body[data-dashboard="socios"] .header-file-info > #statusConsulta,
 body[data-dashboard="socios"] .header-file-info > #totalRows { display: none; }
 body[data-dashboard="socios"] .socios-header-title { display: grid; gap: 1px; }
