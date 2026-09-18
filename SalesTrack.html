@@ -28,6 +28,7 @@
                 <div class="header-file-info">
                     <span id="statusConsulta" class="status-box carregando" style="font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 4px; background: rgba(252,185,0,0.1); color: #fcb900; border: 1px solid rgba(252,185,0,0.2);">Sincronizando com o Google Drive...</span>
                     <span id="totalRows" class="file-rows" style="margin-top: 2px;">0 registros</span>
+                    <div class="socios-header-title"><span class="section-eyebrow">Fazenda Eldorado</span><strong>Dashboard de Sócios</strong><small>Aportes e devoluções pagos por sócio</small></div>
                 </div>
             </div>
             <button id="companyMenuToggle" class="company-title-banner" type="button" aria-label="Abrir áreas da Fazenda Eldorado" aria-haspopup="dialog" aria-expanded="false">
@@ -194,17 +195,12 @@
         </main>
 
         <main id="socios-view" class="main dashboard-view hidden" data-dashboard-view="socios" aria-labelledby="socios-title">
-            <section class="section-heading">
-                <div>
-                    <span class="section-eyebrow">Fazenda Eldorado</span>
-                    <h1 id="socios-title">Dashboard de Sócios</h1>
-                    <p>Aportes e devoluções pagos por sócio, conforme a base de Empréstimos e AFAC.</p>
-                </div>
+            <div class="socios-toolbar">
                 <div class="socios-data-actions">
                     <span id="sociosStatus" class="view-status" role="status" aria-live="polite">Carregando dados…</span>
                     <button id="sociosRefresh" class="metric-button" type="button">Atualizar dados</button>
                 </div>
-            </section>
+            </div>
 
             <section class="socios-kpi-grid">
                 <article class="kpi-card socios-summary-card kpi-primary">
