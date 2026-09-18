@@ -238,7 +238,20 @@
 
   function renderSociosTable() {
     const query = document.getElementById('sociosSearch').value.trim().toLocaleLowerCase('pt-BR');
-    const filtered = sociosRows.filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); });
+    const filtered = sociosRows
+      .filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); })
+      .sort(function (a, b) {
+        const fixedOrder = {
+          'Anderson Simões': 0,
+          'Durcesio Mello': 1,
+          'Jet Star': 3
+        };
+        const aRank = Object.prototype.hasOwnProperty.call(fixedOrder, a.nome) ? fixedOrder[a.nome] : 2;
+        const bRank = Object.prototype.hasOwnProperty.call(fixedOrder, b.nome) ? fixedOrder[b.nome] : 2;
+        if (aRank !== bRank) return aRank - bRank;
+        if (aRank === 2 && b.aplicado !== a.aplicado) return b.aplicado - a.aplicado;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
     document.getElementById('sociosTableBody').innerHTML = filtered.map(function (row) {
       const ultimoAporte = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
       return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimoAporte + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
