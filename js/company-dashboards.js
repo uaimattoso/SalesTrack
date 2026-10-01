@@ -256,10 +256,6 @@
     document.getElementById('sociosTotalDevolvido').textContent = money(totals.devolvido);
     document.getElementById('sociosSaldoLiquido').textContent = money(totals.saldo);
     document.getElementById('sociosTotalAplicadoSub').textContent = sociosRows.length + ' acionistas';
-    const anderson = sociosRows.find(function (row) { return row.nome === 'Anderson Simões'; }) || { aplicado: 0, devolvido: 0, saldo: 0 };
-    document.getElementById('sociosAndersonSaldo').textContent = money(anderson.saldo);
-    document.getElementById('sociosAndersonAplicado').textContent = money(anderson.aplicado);
-    document.getElementById('sociosAndersonDevolvido').textContent = money(anderson.devolvido);
     const latestDate = sociosTransactions.reduce(function (latest, item) { return !latest || item.date > latest ? item.date : latest; }, null);
     const monthRows = latestDate ? sociosTransactions.filter(function (item) { return item.date.getFullYear() === latestDate.getFullYear() && item.date.getMonth() === latestDate.getMonth(); }) : [];
     const month = monthRows.reduce(function (sum, item) { sum.aplicado += item.aplicado; sum.devolvido += item.devolvido; return sum; }, { aplicado: 0, devolvido: 0 });
