@@ -13,6 +13,7 @@
   let currentView = 'salestrack';
   let sociosLoaded = false;
   let sociosLoading = false;
+  let sociosSyncing = false;
   let sociosRows = [];
   let sociosTransactions = [];
   let sociosChart = null;
@@ -188,6 +189,7 @@
       status.textContent = 'Planilha consultada às ' + new Date().toLocaleTimeString('pt-BR');
       renderSociosControls();
       renderSocios();
+      return true;
     } catch (error) {
       status.textContent = sociosLoaded ? 'Falha ao atualizar — exibindo a última consulta' : 'Não foi possível consultar a planilha';
       status.classList.add('error');
@@ -197,10 +199,39 @@
         });
         document.getElementById('sociosTableBody').innerHTML = '<tr><td colspan="5">A base de sócios está indisponível. Confira o acesso à planilha e tente atualizar novamente.</td></tr>';
       }
+      return false;
     } finally {
       clearTimeout(timeout);
       sociosLoading = false;
+      refresh.disabled = sociosSyncing;
+    }
+  }
+
+  async function syncSociosAndRefresh() {
+    if (sociosSyncing || sociosLoading) return;
+    sociosSyncing = true;
+    const status = document.getElementById('sociosStatus');
+    const refresh = document.getElementById('sociosRefresh');
+    refresh.disabled = true;
+    refresh.setAttribute('aria-busy', 'true');
+    status.classList.remove('error');
+    status.textContent = 'Atualizando no Conta Azul… Pode levar alguns minutos.';
+    try {
+      await window.SalesTrackSync.sync();
+      const results = await Promise.all([
+        loadSocios(),
+        window.SalesTrackSync.refreshSales ? window.SalesTrackSync.refreshSales() : Promise.resolve(true)
+      ]);
+      if (!results.every(Boolean)) throw new Error('Os dados foram atualizados no Conta Azul, mas o painel não conseguiu recarregar.');
+      status.textContent = 'Dados do Conta Azul atualizados às ' + new Date().toLocaleTimeString('pt-BR');
+    } catch (error) {
+      console.error(error);
+      status.classList.add('error');
+      status.textContent = error.message;
+    } finally {
+      sociosSyncing = false;
       refresh.disabled = false;
+      refresh.removeAttribute('aria-busy');
     }
   }
 
@@ -309,7 +340,11 @@
   modal.querySelectorAll('.company-option').forEach(function (button) { button.addEventListener('click', function () { showView(button.dataset.view); }); });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeMenu(); });
   document.getElementById('sociosSearch').addEventListener('input', renderSociosTable);
-  document.getElementById('sociosRefresh').addEventListener('click', loadSocios);
+  document.getElementById('sociosRefresh').addEventListener('click', syncSociosAndRefresh);
+  window.addEventListener('salestrack:updated', function () {
+    sociosLoaded = false;
+    if (currentView === 'socios') loadSocios();
+  });
   document.querySelector('.socios-chart-controls').addEventListener('click', function (event) {
     const button = event.target.closest('[data-socios-metric]');
     if (!button) return;

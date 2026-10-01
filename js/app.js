@@ -412,6 +412,8 @@
     }
   }
 
+  window.SalesTrackSync.refreshSales = fetchData;
+
   async function syncContaAzulAndRefresh() {
     const button = document.getElementById('newFileBtn');
     if (!CONTA_AZUL_SYNC_URL || button.disabled) return;
@@ -422,20 +424,13 @@
     UI.updateSyncStatus('Buscando dados diretamente no Conta Azul...', 'carregando');
 
     try {
-      const separator = CONTA_AZUL_SYNC_URL.includes('?') ? '&' : '?';
-      const response = await fetch(`${CONTA_AZUL_SYNC_URL}${separator}action=sync&_=${Date.now()}`, {
-        method: 'GET',
-        cache: 'no-store',
-        redirect: 'follow',
-      });
-      if (!response.ok) throw new Error('A ponte com o Conta Azul não respondeu.');
-      const result = await response.json();
-      if (!result.ok) throw new Error(result.message || 'Não foi possível atualizar o Conta Azul.');
+      const result = await window.SalesTrackSync.sync();
 
       UI.updateSyncStatus(`${result.sales || 0} vendas recebidas do Conta Azul. Atualizando painel...`, 'carregando');
       await new Promise(resolve => setTimeout(resolve, 1200));
       const refreshed = await fetchData();
       if (!refreshed) throw new Error('A planilha foi atualizada, mas o painel não conseguiu recarregar.');
+      window.dispatchEvent(new Event('salestrack:updated'));
     } catch (error) {
       console.error(error);
       UI.updateSyncStatus('Falha ao atualizar pelo Conta Azul: ' + error.message, 'erro');
