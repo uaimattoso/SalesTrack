@@ -1410,3 +1410,6 @@ input:checked + .slider:before {
   transform: translateX(14px);
   background-color: #1a1a2e;
 }
+
+.emprestimos-table-card { grid-column: 2; }
+@media (max-width: 980px) { .emprestimos-table-card { grid-column: 1; } }
