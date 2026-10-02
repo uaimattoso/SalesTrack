@@ -275,9 +275,8 @@
   }
 
   function renderSociosTable() {
-    const query = document.getElementById('sociosSearch').value.trim().toLocaleLowerCase('pt-BR');
     const filtered = sociosRows
-      .filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); })
+      .slice()
       .sort(function (a, b) {
         const fixedOrder = {
           'Anderson Simões': 0,
@@ -297,9 +296,8 @@
   }
 
   function renderEmprestimosTable() {
-    const query = document.getElementById('emprestimosSearch').value.trim().toLocaleLowerCase('pt-BR');
     document.getElementById('emprestimosTableBody').innerHTML = emprestimosRows
-      .filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); })
+      .filter(function (row) { return row.nome === 'Jet Star'; })
       .map(function (row) {
         const ultimo = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
         return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimo + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td><td>' + (row.juros === null ? '—' : money(row.juros)) + '</td></tr>';
@@ -351,8 +349,6 @@
   modal.querySelectorAll('[data-close-company-menu]').forEach(function (button) { button.addEventListener('click', closeMenu); });
   modal.querySelectorAll('.company-option').forEach(function (button) { button.addEventListener('click', function () { showView(button.dataset.view); }); });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeMenu(); });
-  document.getElementById('emprestimosSearch').addEventListener('input', renderEmprestimosTable);
-  document.getElementById('sociosSearch').addEventListener('input', renderSociosTable);
   document.getElementById('sociosRefresh').addEventListener('click', syncSociosAndRefresh);
   window.addEventListener('salestrack:updated', function () {
     sociosLoaded = false;
@@ -370,3 +366,4 @@
   new MutationObserver(function () { if (sociosLoaded && currentView === 'socios') renderSociosChart(); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
+
