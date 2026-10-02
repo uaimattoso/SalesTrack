@@ -225,26 +225,16 @@
                     <div class="chart-body socios-chart-body"><canvas id="sociosChart"></canvas></div>
                 </article>
 
-                <article class="table-card socios-table-card">
-                    <div class="chart-header">
-                        <h3>Posição dos acionistas</h3>
-                        <input id="sociosSearch" class="socios-search" type="search" placeholder="Buscar acionista" aria-label="Buscar acionista">
-                    </div>
+                <article class="table-card socios-table-card socios-position-card" aria-label="Posição dos acionistas e empréstimos">
                     <div class="socios-table-wrap">
-                        <table class="socios-table">
+                        <table class="socios-table" aria-label="Acionistas">
                             <thead><tr><th>Acionista</th><th>Último aporte</th><th>Aplicado</th><th>Devolvido</th><th>Saldo</th></tr></thead>
                             <tbody id="sociosTableBody"></tbody>
                         </table>
                     </div>
-                </article>
-                <article class="table-card socios-table-card emprestimos-table-card">
-                    <div class="chart-header">
-                        <h3>Posição dos empréstimos</h3>
-                        <input id="emprestimosSearch" class="socios-search" type="search" placeholder="Buscar credor" aria-label="Buscar credor">
-                    </div>
-                    <div class="socios-table-wrap">
-                        <table class="socios-table">
-                            <thead><tr><th>Credor</th><th>Último empréstimo</th><th>Aplicado</th><th>Devolvido</th><th>Saldo</th><th>Juros</th></tr></thead>
+                    <div class="socios-table-wrap emprestimos-table-wrap">
+                        <table class="socios-table emprestimos-table" aria-label="Empréstimos">
+                            <thead><tr><th>Empréstimo</th><th>Último aporte</th><th>Aplicado</th><th>Devolvido</th><th>Saldo</th><th>Juros</th></tr></thead>
                             <tbody id="emprestimosTableBody"></tbody>
                         </table>
                     </div>
@@ -333,3 +323,4 @@
     <script src="js/company-dashboards.js?v=9"></script>
 </body>
 </html>
+
