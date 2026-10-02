@@ -16,6 +16,7 @@
   let sociosSyncing = false;
   let sociosRows = [];
   let sociosTransactions = [];
+  let emprestimosRows = [];
   let sociosChart = null;
   let sociosMetric = 'all';
 
@@ -122,13 +123,12 @@
     'José Domingos',
     'Luiz Eduardo',
     'Raphael Gindre',
-    'Durcesio Mello',
-    'Jet Star'
+    'Durcesio Mello'
   ];
 
   function formalShareholderName(value) {
     const normalized = normalizeName(interpretedPartnerName(value));
-    return FORMAL_SHAREHOLDERS.find(function (name) { return normalizeName(name) === normalized; }) || null;
+    return FORMAL_SHAREHOLDERS.concat('Jet Star').find(function (name) { return normalizeName(name) === normalized; }) || null;
   }
 
   async function loadSocios() {
@@ -150,6 +150,7 @@
         return headers.every(function (name) { return row.includes(name); });
       });
       if (headerIndex < 0) throw new Error('Base de empréstimos e AFAC não disponível');
+      const jurosColumn = matrix[headerIndex].indexOf('Juros');
       const columns = headers.map(function (name) { return matrix[headerIndex].indexOf(name); });
       const partners = new Map();
       const transactions = [];
@@ -159,9 +160,10 @@
         if (!date || !nome || isPca(nome) || String(row[columns[8]] || '').trim() !== 'Pago') return;
         const aplicado = toNumber(row[columns[6]]);
         const devolvido = toNumber(row[columns[7]]);
-        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
+        const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0, juros: 0 };
         partner.aplicado += Math.round(aplicado * 100);
         partner.devolvido += Math.round(devolvido * 100);
+        partner.juros += Math.round(toNumber(row[jurosColumn]) * 100);
         if (aplicado > 0 && (!partner.ultimoAporte || date > partner.ultimoAporte)) partner.ultimoAporte = date;
         partners.set(nome, partner);
         transactions.push({
@@ -175,16 +177,18 @@
           devolvido: devolvido
         });
       });
-      const rows = FORMAL_SHAREHOLDERS.map(function (nome) {
+      const rows = FORMAL_SHAREHOLDERS.concat('Jet Star').map(function (nome) {
         const partner = partners.get(nome) || { nome: nome, ultimoAporte: null, aplicado: 0, devolvido: 0, saldo: 0 };
         partner.saldo = (partner.aplicado - partner.devolvido) / 100;
         partner.aplicado /= 100;
         partner.devolvido /= 100;
+        partner.juros = jurosColumn < 0 ? null : partner.juros / 100;
         return partner;
       });
       if (!rows.length) throw new Error('Nenhum dado disponível');
-      sociosRows = rows;
-      sociosTransactions = transactions;
+      sociosRows = rows.filter(function (row) { return row.nome !== 'Jet Star'; });
+      emprestimosRows = rows.filter(function (row) { return row.nome === 'Jet Star'; });
+      sociosTransactions = transactions.filter(function (row) { return row.nome !== 'Jet Star'; });
       sociosLoaded = true;
       status.textContent = 'Planilha consultada às ' + new Date().toLocaleTimeString('pt-BR');
       renderSociosControls();
@@ -197,6 +201,7 @@
         ['sociosTotalAplicado', 'sociosTotalDevolvido', 'sociosSaldoLiquido', 'sociosTotalAplicadoSub'].forEach(function (id) {
           document.getElementById(id).textContent = '—';
         });
+        document.getElementById('emprestimosTableBody').innerHTML = '<tr><td colspan="6">A base de empréstimos está indisponível. Tente atualizar novamente.</td></tr>';
         document.getElementById('sociosTableBody').innerHTML = '<tr><td colspan="5">A base de sócios está indisponível. Confira o acesso à planilha e tente atualizar novamente.</td></tr>';
       }
       return false;
@@ -264,14 +269,14 @@
     document.getElementById('sociosMesAplicado').textContent = money(month.aplicado);
     document.getElementById('sociosMesDevolvido').textContent = money(month.devolvido);
     renderSociosTable();
+    renderEmprestimosTable();
     renderSociosDetailTable();
     renderSociosChart();
   }
 
   function renderSociosTable() {
-    const query = document.getElementById('sociosSearch').value.trim().toLocaleLowerCase('pt-BR');
     const filtered = sociosRows
-      .filter(function (row) { return row.nome.toLocaleLowerCase('pt-BR').includes(query); })
+      .slice()
       .sort(function (a, b) {
         const fixedOrder = {
           'Anderson Simões': 0,
@@ -288,6 +293,15 @@
       const ultimoAporte = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
       return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimoAporte + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td></tr>';
     }).join('') || '<tr><td colspan="5">Nenhum acionista encontrado.</td></tr>';
+  }
+
+  function renderEmprestimosTable() {
+    document.getElementById('emprestimosTableBody').innerHTML = emprestimosRows
+      .filter(function (row) { return row.nome === 'Jet Star'; })
+      .map(function (row) {
+        const ultimo = row.ultimoAporte ? row.ultimoAporte.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '') : '—';
+        return '<tr><td>' + escapeHtml(row.nome) + '</td><td>' + ultimo + '</td><td>' + money(row.aplicado) + '</td><td>' + money(row.devolvido) + '</td><td>' + money(row.saldo) + '</td><td>' + (row.juros === null ? '—' : money(row.juros)) + '</td></tr>';
+      }).join('') || '<tr><td colspan="6">Nenhum empréstimo encontrado.</td></tr>';
   }
 
   function renderSociosDetailTable() {
@@ -335,7 +349,6 @@
   modal.querySelectorAll('[data-close-company-menu]').forEach(function (button) { button.addEventListener('click', closeMenu); });
   modal.querySelectorAll('.company-option').forEach(function (button) { button.addEventListener('click', function () { showView(button.dataset.view); }); });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeMenu(); });
-  document.getElementById('sociosSearch').addEventListener('input', renderSociosTable);
   document.getElementById('sociosRefresh').addEventListener('click', syncSociosAndRefresh);
   window.addEventListener('salestrack:updated', function () {
     sociosLoaded = false;
@@ -353,3 +366,4 @@
   new MutationObserver(function () { if (sociosLoaded && currentView === 'socios') renderSociosChart(); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
+
