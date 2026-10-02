@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=50">
+    <link rel="stylesheet" href="css/style.css?v=51">
 </head>
 <body>
 
@@ -237,6 +237,18 @@
                         </table>
                     </div>
                 </article>
+                <article class="table-card socios-table-card emprestimos-table-card">
+                    <div class="chart-header">
+                        <h3>Posição dos empréstimos</h3>
+                        <input id="emprestimosSearch" class="socios-search" type="search" placeholder="Buscar credor" aria-label="Buscar credor">
+                    </div>
+                    <div class="socios-table-wrap">
+                        <table class="socios-table">
+                            <thead><tr><th>Credor</th><th>Último empréstimo</th><th>Aplicado</th><th>Devolvido</th><th>Saldo</th><th>Juros</th></tr></thead>
+                            <tbody id="emprestimosTableBody"></tbody>
+                        </table>
+                    </div>
+                </article>
             </section>
 
             <section class="table-card socios-detail-card">
@@ -318,6 +330,6 @@
     <script src="js/ui.js?v=45"></script>
     <script src="js/conta-azul-sync.js?v=1"></script>
     <script src="js/app.js?v=49"></script>
-    <script src="js/company-dashboards.js?v=8"></script>
+    <script src="js/company-dashboards.js?v=9"></script>
 </body>
 </html>
